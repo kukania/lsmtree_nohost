@@ -62,6 +62,7 @@ void threadset_init(threadset* input){
 #endif
 	input->activatednum=input->max_act=0;
 	input->req_q=new spsc_bounded_queue_t<void*>(THREADQN);
+	input->read_q=new mpmc_bounded_queue_t<void*>(THREADQN);
 	input->gc_q=new spsc_bounded_queue_t<void*>(2);
 	//	input->req_q=create_queue();
 }
@@ -201,7 +202,15 @@ void* thread_main(void *input){
 		//master->req_q->pop(data);
 		//lsm_req=(lsmtree_req_t*)data;
 	//	lsm_req=(lsmtree_req_t*)remove_front(master->req_q);
-		while(!master->req_q->dequeue(&data)){}
+		if(number==0){
+			if(!master->req_q->dequeue(&data)){
+				if(!master->read_q->dequeue(&data)){
+					continue;
+				}
+			}
+		}
+		else
+			while(!master->read_q->dequeue(&data)){}
 
 		lsm_req=(lsmtree_req_t*)data;
 		if(lsm_req==NULL){
@@ -241,9 +250,13 @@ void* thread_main(void *input){
 					pthread_mutex_init(&lsm_req->meta_lock,NULL);
 					//measure_start(&mt2);
 					//MS(&rt);
-					if(thread_get(LSM,*key,myth,value,lsm_req)==2){
+					test_num=thread_get(LSM,*key,myth,value,lsm_req);
+					if(test_num==0){
+						printf("[%lu]not_found\n",*key);
 						lsm_req->end_req(lsm_req);
 					}
+					if(test_num==2)
+						lsm_req->end_req(lsm_req);
 					//MA(&rt);
 					//printf("%d",cnt++);
 					//measure_end(&mt2,"get");
@@ -298,12 +311,16 @@ void threadset_start(threadset* input){
 	}
 	pthread_create(&input->gc_thread.id,NULL,&thread_gc_main,(void*)input);
 }
+void threadset_read_assign(threadset* input, lsmtree_req_t *req){
+	while(!input->read_q->enqueue(req)){}
+}
 /*
 MeasureTime wt;
 MeasureTime at;
  */
 void threadset_assign(threadset* input, lsmtree_req_t *req){
-	while(!input->req_q->enqueue(req)){}
+	while(!input->req_q->enqueue(req)){
+	}
 	/*
 	if(wt!=NULL)
 		MS(wt);

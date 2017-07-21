@@ -101,7 +101,10 @@ int8_t lr_make_req(req_t *r){
 			MS(&mas2);*/
 /*		if(th_req->type==LR_READ_T)
 			MS(&mas);*/
-		threadset_assign(&processor,th_req);		
+		if(th_req->type==LR_WRITE_T)
+			threadset_assign(&processor,th_req);		
+		else
+			threadset_read_assign(&processor,th_req);
 		/*if(th_req->type==LR_READ_T)
 			MA(&mas);*//*
 		if(th_req->type==LR_WRITE_T)
@@ -112,6 +115,7 @@ int8_t lr_make_req(req_t *r){
 struct timeval max_time;
 int big_time_check;
 int8_t lr_end_req(lsmtree_req_t *r){
+	static int readfree=0;
 	lsmtree_req_t *parent;
 	lsmtree_gc_req_t *gc_p;
 	static bool check_time=false;

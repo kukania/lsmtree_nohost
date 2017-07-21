@@ -13,9 +13,9 @@
 #define PAGESIZE (8192)
 #define MUL 24
 #define LEVELN 5
-#define INPUTSIZE (1024*256)
+#define INPUTSIZE (1024*128)
 #define BUSYPOINT 0.7
-#define THREADQN 2048
+#define THREADQN 1024
 #define THREADNUM 1
 #define THREAD //-do thread
 //#define DEBUG_THREAD 
@@ -25,7 +25,7 @@
 #define ENDMERGE 0.5
 #define MAXC 10
 #define MAXNODE 250000
-#define SEQUENCE 1
+#define SEQUENCE 0
 #define READTEST
 #define GETTEST
 

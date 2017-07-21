@@ -5,6 +5,7 @@
 #include"LR_inter.h"
 #include"skiplist.h"
 #include"lockfreeq.h"
+#include"lfmpmc.h"
 #include<pthread.h>
 #include<semaphore.h>
 typedef struct threading{
@@ -35,6 +36,7 @@ typedef struct threadset{
 	threading threads[THREADNUM];
 	threading gc_thread;
 	spsc_bounded_queue_t<void *>* req_q;
+	mpmc_bounded_queue_t<void *> *read_q;
 	spsc_bounded_queue_t<void *>* gc_q;
 	//queue *gc_q;
 	int activatednum;
@@ -47,7 +49,7 @@ void threading_init(threading *);
 void threadset_init(threadset*);
 void threadset_start(threadset*);
 void threadset_assign(threadset*,lsmtree_req_t *);
-void threadset_write_assign(threadset *,lsmtree_req_t *);
+void threadset_read_assign(threadset *,lsmtree_req_t *);
 void threadset_end(threadset*);
 void threadset_clear(threadset*);
 void threadset_request_wait(threadset*);

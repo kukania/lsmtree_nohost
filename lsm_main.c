@@ -35,6 +35,9 @@ extern int big_time_check;
 extern timeval max_time1,adding;
 extern int big_time_check1;
 extern int end_counter;
+
+extern int meta_read_data;
+KEYT *keys;
 int cnnt=0;
 int main(){
 	wt=at=NULL;
@@ -45,13 +48,18 @@ int main(){
 	int fd;
 	printf("start!\n");
 	measure_start(&mt);
+	keys=(KEYT*)malloc(sizeof(KEYT)*INPUTSIZE);
+	for(int i=0; i<INPUTSIZE; i++){
+		keys[i]=rand()%INPUTSIZE+1;
+	}
+	srand(1);
 	int cnt=1;
 	for(int i=1; i<=INPUTSIZE; i++){
 		//printf("%d\n",i);
 		req=(req_t*)malloc(sizeof(req_t));
 		req->type=1;
 		if(SEQUENCE==0){
-			key=rand()%INPUTSIZE+1;
+			key=keys[i-1];
 		}
 		else{
 			key=i;
@@ -74,8 +82,10 @@ int main(){
 	at=(MeasureTime*)malloc(sizeof(MeasureTime));
 	measure_init(wt);
 	measure_init(at);
+	sleep(1);
 	printf("read!\n");
 	measure_start(&mt);
+	srand(1);
 	//printf("??");
 	for(int i=1; i<=INPUTSIZE; i++){
 		req=(req_t*)malloc(sizeof(req_t));
@@ -83,7 +93,7 @@ int main(){
 	//	if(i%1024==0)
 	//		printf("%d throw\n",i);
 		if(SEQUENCE==0){
-			key=rand()%INPUTSIZE+1;
+			key=keys[i-1];
 		}
 		else{
 			key=i;
@@ -101,12 +111,13 @@ int main(){
 	//printf("throw all read req!\n");
 	threadset_request_wait(&processor);
 	measure_end(&mt,"read_end");
+	printf("meta_read_data:%d\n",meta_read_data);
 	//measure_end(&mt,"read_end");
 //	printf("mem:%.6f\n",(float)mem.adding.tv_usec/1000000);
 //	printf("last:%.6f\n",(float)last.adding.tv_usec/1000000);
 //	printf("buf:%.6f\n",(float)buf.adding.tv_usec/1000000);
-//	printf("bp:%.6f\n",(float)bp.adding.tv_usec/1000000);
-//	printf("find:%.6f\n",(float)find.adding.tv_usec/1000000);
+	printf("bp:%.6f\n",(float)bp.adding.tv_usec/1000000);
+	printf("find:%.6f\n",(float)find.adding.tv_usec/1000000);
 	//printf("assign write:%.6f\n",(float)mas2.adding.tv_usec/1000000);
 //	printf("assign read:%.6f\n",(float)mas.adding.tv_usec/1000000);
 	//printf("writetime:%.6f\n",(float)gt.adding.tv_usec/1000000);

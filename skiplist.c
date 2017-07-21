@@ -230,8 +230,8 @@ sktable *skiplist_meta_read_n(KEYT pbn, int fd,int seq,lsmtree_req_t *req){
 	temp->keys=(keyset*)malloc(PAGESIZE);
 #else	
 	char *temp_p;
-//	printf("meta!\n");
 	temp->dmatag=memio_alloc_dma(2,&temp_p);
+	//printf("meta! [%d]\n",temp->dmatag);
 	temp->keys=(keyset*)temp_p;
 #endif
     temp->seq_number=seq;
@@ -283,8 +283,6 @@ keyset *skiplist_keyset_find(sktable *t, KEYT key){
 		if(key==t->meta[mid].key)
 			return &t->meta[mid];
 		else if(key<t->meta[mid].key){
-			if(mid==0)
-				return NULL;
 			end=mid-1;
 			mid=(start+end)/2;
 		}
@@ -357,9 +355,7 @@ KEYT skiplist_meta_write(skiplist *data,int fd, lsmtree_gc_req_t *req){
 #else	
 		temp_req->seq_number=seq_number++;
 		temp_req->isgc=true;
-		//MS(&mt);
 		memio_write(mio,ppa++,(uint64_t)(PAGESIZE),(uint8_t*)temp_req->keys,1,(void*)temp_req,temp_req->dmatag);
-		//ME(&mt,"write");
 #endif
 	}
 	return ppa-1;

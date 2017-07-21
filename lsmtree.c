@@ -163,6 +163,7 @@ MeasureTime buf;
 MeasureTime bp;
 MeasureTime find;
 */
+int meta_read_data;
 int thread_get(lsmtree *LSM, KEYT key, threading *input, char *ret,lsmtree_req_t* req){
 	int tempidx=0;
 //	MS(&mem);
@@ -203,9 +204,9 @@ int thread_get(lsmtree *LSM, KEYT key, threading *input, char *ret,lsmtree_req_t
 //	MA(&buf);
 
 	//thread_disk_get(LSM,key,req,0);
-//	MS(&bp);
 	for(int i=0; i<LEVELN; i++){
 		if(LSM->buf.disk[i]!=NULL){
+		//	MS(&bp);
 			Entry *temp=level_find(LSM->buf.disk[i],key);
 			if(temp==NULL){
 				continue;
@@ -214,10 +215,11 @@ int thread_get(lsmtree *LSM, KEYT key, threading *input, char *ret,lsmtree_req_t
 			pthread_mutex_lock(&req->meta_lock);
 			skiplist_meta_read_n(temp->pbn,LSM->dfd,0,req);
 			pthread_mutex_lock(&req->meta_lock);
-//			MA(&bp);
+		//	MA(&bp);
 			sktable *sk=req->res;
-//			MS(&find);
+		//	MS(&find);
 			keyset *temp_key=skiplist_keyset_find(sk,key);
+		//	MA(&find);
 			if(temp_key!=NULL){
 				skiplist_keyset_read(temp_key,ret,LSM->dfd,req);
 				if(input->buf_data!=NULL){
@@ -229,7 +231,8 @@ int thread_get(lsmtree *LSM, KEYT key, threading *input, char *ret,lsmtree_req_t
 				return 1;
 			}
 			else{
-				free(input->buf_data);
+				free(sk);
+				pthread_mutex_unlock(&req->meta_lock);
 			}
 		}
 		else
