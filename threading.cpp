@@ -14,7 +14,10 @@
 #define __STDC_FORMAT_MACROS
 extern threadset processor;
 extern pthread_mutex_t dfd_lock;
-pthread_mutex_t write_lock;
+
+pthread_mutex_t read_lock;
+pthread_cond_t read_cond;
+
 extern MeasureTime mt;
 MeasureTime gt;
 MeasureTime *wt;
@@ -24,7 +27,6 @@ void threading_init(threading *input){
 	pthread_mutex_init(&input->activated_check,NULL);
 	pthread_cond_init(&input->activated_cond,NULL);
 	pthread_mutex_init(&input->terminate,NULL);
-	pthread_mutex_init(&write_lock,NULL);
 
 	input->isactivated=false;
 	input->terminateflag=false;
@@ -34,7 +36,6 @@ void threading_init(threading *input){
 void threading_clear(threading *input){
 	pthread_mutex_destroy(&input->activated_check);
 	pthread_mutex_destroy(&input->terminate);
-	pthread_mutex_destroy(&write_lock);
 	if(input->buf_data!=NULL)
 		free(input->buf_data);
 }
@@ -45,6 +46,9 @@ void threadset_init(threadset* input){
 	pthread_mutex_init(&input->th_cnt_lock,NULL);
 	pthread_mutex_init(&input->gc_lock,NULL);
 	
+	pthread_mutex_init(&read_lock,NULL);
+	pthread_cond_init(&read_cond,NULL);
+
 	pthread_cond_init(&input->gc_cond,NULL);
 	pthread_cond_init(&input->gc_full_cond,NULL);
 #ifdef DEBUG_THREAD
@@ -75,6 +79,12 @@ void threadset_clear(threadset *input){
 	pthread_mutex_destroy(&input->req_lock);
 	pthread_mutex_destroy(&input->th_cnt_lock);
 	pthread_mutex_destroy(&input->gc_lock);
+
+	pthread_mutex_destroy(&read_lock);
+	pthread_cond_destroy(&read_cond);
+	pthread_cond_destroy(&input->gc_cond);
+	pthread_cond_destroy(&input->gc_full_cond);
+
 #ifdef DEBUG_THREAD
 	pthread_mutex_destroy(&input->debug_m);
 #endif
@@ -108,38 +118,17 @@ void* thread_gc_main(void *input){
 		//	pthread_mutex_unlock(&master->gc_lock);
 			continue;
 		}
-/*		
-		while(master->gc_q->count==0){
-			pthread_mutex_lock(&myth->activated_check);
-			myth->isactivated=false;
-			pthread_cond_broadcast(&myth->activated_cond);
-			pthread_mutex_unlock(&myth->activated_check);
-			pthread_cond_wait(&master->gc_cond,&master->gc_lock);
-		}
-		pthread_mutex_lock(&myth->activated_check);
-		myth->isactivated=true;
-		pthread_mutex_unlock(&myth->activated_check);
-		lsmtree_gc_req_t *lsm_req=(lsmtree_gc_req_t*)remove_front(master->gc_q);
-		if(lsm_req==NULL){
-			pthread_mutex_lock(&myth->terminate);
-			if(myth->terminateflag){
-				pthread_mutex_unlock(&myth->terminate);
-				pthread_mutex_unlock(&master->gc_lock);
-				break;
-			}
-			pthread_mutex_unlock(&myth->terminate);
-			pthread_mutex_unlock(&master->gc_lock);
-			continue;
-		}
-		pthread_cond_broadcast(&master->gc_full_cond);
-		pthread_mutex_unlock(&master->gc_lock);
-*/
 		pthread_mutex_lock(&myth->terminate);
 		if(myth->terminateflag){
 			pthread_mutex_unlock(&myth->terminate);
 			break;
 		}
 		else{
+			pthread_mutex_lock(&myth->activated_check);
+			myth->isactivated=true;
+			pthread_cond_broadcast(&myth->activated_cond);
+			pthread_mutex_unlock(&myth->activated_check);
+
 			pthread_mutex_unlock(&myth->terminate);
 			//printf("[%d]doing!!",number);
 			lsmtree *LSM=(lsmtree*)lsm_req->params[3];
@@ -198,10 +187,6 @@ void* thread_main(void *input){
 		pthread_cond_broadcast(&myth->activated_cond);
 		pthread_mutex_unlock(&myth->activated_check);
 		
-		//pthread_mutex_lock(&master->req_lock);
-		//master->req_q->pop(data);
-		//lsm_req=(lsmtree_req_t*)data;
-	//	lsm_req=(lsmtree_req_t*)remove_front(master->req_q);
 		if(number==0){
 			if(!master->req_q->dequeue(&data)){
 				if(!master->read_q->dequeue(&data)){
@@ -209,23 +194,16 @@ void* thread_main(void *input){
 				}
 			}
 		}
-		else
-			while(!master->read_q->dequeue(&data)){}
-
-		lsm_req=(lsmtree_req_t*)data;
-		if(lsm_req==NULL){
-			pthread_mutex_lock(&myth->terminate);
-			if(myth->terminateflag){
-				pthread_mutex_unlock(&myth->terminate);
-		//		pthread_mutex_unlock(&master->req_lock);
-				break;
+		else{
+			if(!master->read_q->dequeue(&data)){
+				pthread_cond_wait(&read_cond,&read_lock);
+				master->read_q->dequeue(&data);
+				pthread_mutex_unlock(&read_lock);
 			}
-			pthread_mutex_unlock(&myth->terminate);
-		//	pthread_mutex_unlock(&master->req_lock);
-			continue;
+		//	while(!master->read_q->dequeue(&data)){}
 		}
 
-		//pthread_mutex_unlock(&master->req_lock);
+		lsm_req=(lsmtree_req_t*)data;
 		pthread_mutex_lock(&myth->terminate);
 		if(myth->terminateflag){
 			pthread_mutex_unlock(&myth->terminate);
@@ -234,7 +212,9 @@ void* thread_main(void *input){
 		else{
 			pthread_mutex_lock(&myth->activated_check);
 			myth->isactivated=true;
+			pthread_cond_broadcast(&myth->activated_cond);
 			pthread_mutex_unlock(&myth->activated_check);
+
 			pthread_mutex_unlock(&myth->terminate);
 			
 			KEYT *key=(KEYT*)lsm_req->params[1];
@@ -313,6 +293,7 @@ void threadset_start(threadset* input){
 }
 void threadset_read_assign(threadset* input, lsmtree_req_t *req){
 	while(!input->read_q->enqueue(req)){}
+	pthread_cond_broadcast(&read_cond);
 }
 /*
 MeasureTime wt;
