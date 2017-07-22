@@ -19,6 +19,9 @@ extern pthread_mutex_t sst_lock;
 extern pthread_mutex_t mem_lock;
 pthread_mutex_t pl;
 pthread_mutex_t endR;
+
+extern MeasureTime bp;
+extern MeasureTime buf;
 int8_t lr_inter_init(){
 	LSM=(lsmtree*)malloc(sizeof(lsmtree));
 	threadset_init(&processor);
@@ -124,13 +127,17 @@ int8_t lr_end_req(lsmtree_req_t *r){
 	switch(r->type){
 		case LR_DR_T:
 			parent=r->parent;
-			memcpy(parent->res,r->keys,PAGESIZE);
+			parent->keys=r->keys;
+			parent->dmatag=r->dmatag;
+			//memcpy(parent->res,r->keys,PAGESIZE);
 #ifndef NDMA
-			memio_free_dma(2,r->dmatag);
+		//	memio_free_dma(2,r->dmatag);
 #else
 			free(r->keys);
 #endif
+			MS(&bp);
 			pthread_mutex_unlock(&parent->meta_lock);
+			MA(&bp);
 			break;
 		case LR_DDR_T:
 			parent=r->parent;

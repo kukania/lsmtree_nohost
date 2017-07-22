@@ -100,7 +100,43 @@ class mpmc_bounded_queue_t
 				// never taken
 				return false;
 			}
+		bool
+			isempty()
+			{
+				size_t       tail_seq = _tail_seq.load(std::memory_order_relaxed);
 
+				for (;;) {
+					node_t*  node     = &_buffer[tail_seq & _mask];
+					size_t   node_seq = node->seq.load(std::memory_order_acquire);
+					intptr_t dif      = (intptr_t) node_seq - (intptr_t)(tail_seq + 1);
+
+					// if seq and head_seq are the same then it means this slot is empty
+					if (dif == 0) {
+						// claim our spot by moving head
+						// if head isn't the same as we last checked then that means someone beat us to the punch
+						// weak compare is faster, but can return spurious results
+						// which in this instance is OK, because it's in the loop
+						if (_tail_seq.compare_exchange_weak(tail_seq, tail_seq + 1, std::memory_order_relaxed)) {
+							// set the output
+						//	*data = node->data;
+							// set the sequence to what the head sequence should be next time around
+						//	node->seq.store(tail_seq + _mask + 1, std::memory_order_release);
+							return false;
+						}
+					}
+					else if (dif < 0) {
+						// if seq is less than head seq then it means this slot is full and therefore the buffer is full
+						return true;
+					}
+					else {
+						// under normal circumstances this branch should never be taken
+//						tail_seq = _tail_seq.load(std::memory_order_relaxed);
+					}
+				}
+
+				// never taken
+				return true;
+			}
 		bool
 			dequeue(
 					T* data)

@@ -19,6 +19,11 @@ typedef struct threading{
 	int level;
 	bool isactivated;
 	bool terminateflag;
+
+	int cache_hit;
+	int header_read;
+	MeasureTime waiting;
+
 }threading;
 
 typedef struct threadset{
@@ -53,7 +58,8 @@ void threadset_read_assign(threadset *,lsmtree_req_t *);
 void threadset_end(threadset*);
 void threadset_clear(threadset*);
 void threadset_request_wait(threadset*);
+void threadset_read_wait(threadset*);
 void threadset_gc_assign(threadset*,lsmtree_gc_req_t *);
 void threadset_gc_wait(threadset*);
-sktable *sk_from_ths(threadset*);
+void threadset_debug_print(threadset*);
 #endif

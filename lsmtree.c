@@ -206,32 +206,25 @@ int thread_get(lsmtree *LSM, KEYT key, threading *input, char *ret,lsmtree_req_t
 	//thread_disk_get(LSM,key,req,0);
 	for(int i=0; i<LEVELN; i++){
 		if(LSM->buf.disk[i]!=NULL){
-		//	MS(&bp);
 			Entry *temp=level_find(LSM->buf.disk[i],key);
 			if(temp==NULL){
 				continue;
 			}
-			req->res=(sktable*)malloc(sizeof(sktable));
 			pthread_mutex_lock(&req->meta_lock);
 			skiplist_meta_read_n(temp->pbn,LSM->dfd,0,req);
+			input->header_read++;
+		//	MS(&input->waiting);
 			pthread_mutex_lock(&req->meta_lock);
-		//	MA(&bp);
-			sktable *sk=req->res;
-		//	MS(&find);
+		//	MA(&input->waiting);
+			sktable *sk=(sktable*)req->keys;
 			keyset *temp_key=skiplist_keyset_find(sk,key);
-		//	MA(&find);
 			if(temp_key!=NULL){
 				skiplist_keyset_read(temp_key,ret,LSM->dfd,req);
-				if(input->buf_data!=NULL){
-					free(input->buf_data);
-				}
-				input->level=i;
-				input->buf_data=sk;
-//				MA(&find);
+				memio_free_dma(2,req->dmatag);
 				return 1;
 			}
 			else{
-				free(sk);
+				memio_free_dma(2,req->dmatag);
 				pthread_mutex_unlock(&req->meta_lock);
 			}
 		}

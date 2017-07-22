@@ -109,7 +109,7 @@ int main(){
 		lr_make_req(req);
 	}
 	//printf("throw all read req!\n");
-	threadset_request_wait(&processor);
+	threadset_read_wait(&processor);
 	measure_end(&mt,"read_end");
 	printf("meta_read_data:%d\n",meta_read_data);
 	//measure_end(&mt,"read_end");
@@ -131,4 +131,5 @@ int main(){
 	printf("max:%ld sec and %.6f\n",max_time.tv_sec,(float)max_time.tv_usec/1000000);
 	printf("over time (%d): %d\n",INPUTSIZE,big_time_check);*/
 	//lr_inter_free();
+	threadset_debug_print(&processor);
 }
