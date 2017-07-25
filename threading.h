@@ -6,8 +6,10 @@
 #include"skiplist.h"
 #include"lockfreeq.h"
 #include"lfmpmc.h"
+#include"lsm_cache.h"
 #include<pthread.h>
 #include<semaphore.h>
+typedef struct threadset threadset;
 typedef struct threading{
 	pthread_t id;
 	pthread_mutex_t activated_check;
@@ -23,7 +25,7 @@ typedef struct threading{
 	int cache_hit;
 	int header_read;
 	MeasureTime waiting;
-
+	threadset *master;
 }threading;
 
 typedef struct threadset{
@@ -48,6 +50,8 @@ typedef struct threadset{
 	int max_act;
 	int sk_target_number;
 	int sk_now_number;
+
+	lsm_cache mycache;
 }threadset;
 void threading_clear(threading *);
 void threading_init(threading *);

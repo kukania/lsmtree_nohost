@@ -1,5 +1,6 @@
 #include"LR_inter.h"
 #include"measure.h"
+#include"lsm_cache.h"
 #include"utils.h"
 #include"threading.h"
 #ifndef NDMA
@@ -34,8 +35,7 @@ extern timeval max_time;
 extern int big_time_check;
 extern timeval max_time1,adding;
 extern int big_time_check1;
-extern int end_counter;
-
+extern int endcheck;
 extern int meta_read_data;
 KEYT *keys;
 int cnnt=0;
@@ -82,7 +82,7 @@ int main(){
 	at=(MeasureTime*)malloc(sizeof(MeasureTime));
 	measure_init(wt);
 	measure_init(at);
-	sleep(1);
+	//sleep(1);
 	printf("read!\n");
 	measure_start(&mt);
 	srand(1);
@@ -90,8 +90,8 @@ int main(){
 	for(int i=1; i<=INPUTSIZE; i++){
 		req=(req_t*)malloc(sizeof(req_t));
 		req->type=2;
-	//	if(i%1024==0)
-	//		printf("%d throw\n",i);
+		//if(i%1024==0)
+		//	printf("%d throw\n",i);
 		if(SEQUENCE==0){
 			key=keys[i-1];
 		}
@@ -109,7 +109,8 @@ int main(){
 		lr_make_req(req);
 	}
 	//printf("throw all read req!\n");
-	threadset_read_wait(&processor);
+	//threadset_read_wait(&processor);
+	while(endcheck!=INPUTSIZE){}
 	measure_end(&mt,"read_end");
 	printf("meta_read_data:%d\n",meta_read_data);
 	//measure_end(&mt,"read_end");
@@ -132,4 +133,5 @@ int main(){
 	printf("over time (%d): %d\n",INPUTSIZE,big_time_check);*/
 	//lr_inter_free();
 	threadset_debug_print(&processor);
+	cache_summary(&processor.mycache);
 }

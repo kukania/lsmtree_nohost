@@ -58,7 +58,7 @@ OBJECTS = server.o command.o queue.o request.o priority_queue.o lsmtree.o bptree
 
 
 #OBJECTS = server.c command.c queue.c request.c priority_queue.c lsmtree.c bptree.c utils.c measure.c skiplist.c threading.c LR_inter.c
-OBJECTS2 = lsmtree.o bptree.o measure.o skiplist.o threading.o LR_inter.o lsm_main.o
+OBJECTS2 = lsmtree.o bptree.o measure.o skiplist.o threading.o LR_inter.o lsm_main.o lsm_cache.o
 LIBLSM: $(OBJECTS2) 
 	$(CXX) -o LIBLSM $(OBJECTS2) $(LDFLAGS) 
 
@@ -83,6 +83,8 @@ bptree.o : $*.*
 measure.o : $*.*
 
 skiplist.o : $*.* measure.c
+
+lsm_cache.o : $*.* skiplist.c
 
 threading.o : $*.* measure.c
 

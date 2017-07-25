@@ -311,7 +311,6 @@ bool skiplist_keyset_read(keyset* k,char *res,int fd,lsmtree_req_t *req){
 	temp->end_req(temp);
 #else
 	temp->isgc=false;
-	measure_init(&temp->mt);
 	//MS(&mt);
 	memio_read(mio,k->ppa,(uint64_t)(PAGESIZE),(uint8_t*)res,1,temp,temp->req->dmaTag);
 	//ME(&mt,"read");

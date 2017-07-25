@@ -113,10 +113,10 @@ int8_t lr_make_req(req_t *r){
 		if(th_req->type==LR_WRITE_T)
 			MA(&mas2);*/
 		return 0;
-	}
-
+}
 struct timeval max_time;
 int big_time_check;
+int endcheck;
 int8_t lr_end_req(lsmtree_req_t *r){
 	static int readfree=0;
 	lsmtree_req_t *parent;
@@ -124,20 +124,22 @@ int8_t lr_end_req(lsmtree_req_t *r){
 	static bool check_time=false;
 	KEYT key;
 	char *value;
+	void *data=NULL;
 	switch(r->type){
 		case LR_DR_T:
 			parent=r->parent;
 			parent->keys=r->keys;
 			parent->dmatag=r->dmatag;
+		//	while(!parent->meta->enqueue(data)){}
 			//memcpy(parent->res,r->keys,PAGESIZE);
 #ifndef NDMA
 		//	memio_free_dma(2,r->dmatag);
 #else
 			free(r->keys);
 #endif
-			MS(&bp);
+	//		MS(&bp);
 			pthread_mutex_unlock(&parent->meta_lock);
-			MA(&bp);
+	//		MA(&bp);
 			break;
 		case LR_DDR_T:
 			parent=r->parent;
@@ -166,9 +168,11 @@ int8_t lr_end_req(lsmtree_req_t *r){
 #endif
 			break;
 		case LR_READ_T:
+//			delete r->meta;
 			pthread_mutex_destroy(&r->meta_lock);
 #ifndef NDMA
 			memio_free_dma(2,r->req->dmaTag);
+			endcheck++;
 #else
 			free(r->req->value);
 #endif

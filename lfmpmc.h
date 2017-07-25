@@ -156,6 +156,8 @@ class mpmc_bounded_queue_t
 						// which in this instance is OK, because it's in the loop
 						if (_tail_seq.compare_exchange_weak(tail_seq, tail_seq + 1, std::memory_order_relaxed)) {
 							// set the output
+							if(node->data==NULL)
+								printf("WTF\n");
 							*data = node->data;
 							// set the sequence to what the head sequence should be next time around
 							node->seq.store(tail_seq + _mask + 1, std::memory_order_release);

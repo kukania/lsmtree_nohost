@@ -17,6 +17,8 @@ extern pthread_mutex_t dfd_lock;
 
 pthread_mutex_t read_lock;
 pthread_cond_t read_cond;
+pthread_mutex_t write_lock;
+pthread_cond_t write_cond;
 
 extern MeasureTime mt;
 MeasureTime gt;
@@ -52,6 +54,8 @@ void threadset_init(threadset* input){
 
 	pthread_mutex_init(&read_lock,NULL);
 	pthread_cond_init(&read_cond,NULL);
+	pthread_mutex_init(&write_lock,NULL);
+	pthread_cond_init(&write_cond,NULL);
 
 	pthread_cond_init(&input->gc_cond,NULL);
 	pthread_cond_init(&input->gc_full_cond,NULL);
@@ -61,6 +65,7 @@ void threadset_init(threadset* input){
 
 	for(int i=0; i<THREADNUM;i ++){
 		threading_init(&input->threads[i]);
+		input->threads[i].master=input;
 		input->threads[i].number=i;
 	}
 	threading_init(&input->gc_thread);
@@ -73,6 +78,8 @@ void threadset_init(threadset* input){
 	input->read_q=new mpmc_bounded_queue_t<void*>(THREADQN);
 	input->gc_q=new spsc_bounded_queue_t<void*>(2);
 	//	input->req_q=create_queue();
+
+	cache_init(&input->mycache);
 }
 
 void threadset_clear(threadset *input){
@@ -96,6 +103,8 @@ void threadset_clear(threadset *input){
 	lsmtree_gc_req_t *gc_temp;
 	delete input->req_q;
 	delete input->gc_q;
+
+	cache_clear(&input->mycache);
 }
 void* thread_gc_main(void *input){
 	int number=0;
@@ -185,7 +194,7 @@ void* thread_main(void *input){
 	bool flag=false;
 	while(1){
 		lsmtree_req_t *lsm_req;
-		void *data;
+		void *data=NULL;
 		pthread_mutex_lock(&myth->activated_check);
 		myth->isactivated=false;
 		pthread_cond_broadcast(&myth->activated_cond);
@@ -193,20 +202,28 @@ void* thread_main(void *input){
 
 		if(number==0){
 			if(!master->req_q->dequeue(&data)){
+				pthread_cond_wait(&write_cond,&write_lock);
 				if(!master->read_q->dequeue(&data)){
+					pthread_mutex_unlock(&write_lock);
 					continue;
 				}
+				pthread_mutex_unlock(&write_lock);
 			}
 		}
 		else{
 			if(!master->read_q->dequeue(&data)){
 				pthread_cond_wait(&read_cond,&read_lock);
-				master->read_q->dequeue(&data);
+				if(!master->read_q->dequeue(&data)){
+					pthread_mutex_unlock(&read_lock);
+					continue;
+				}
 				pthread_mutex_unlock(&read_lock);
 			}
 			//	while(!master->read_q->dequeue(&data)){}
 		}
-
+		if(data==NULL){
+			printf("get NULL\n");
+		}
 		lsm_req=(lsmtree_req_t*)data;
 		pthread_mutex_lock(&myth->terminate);
 		if(myth->terminateflag){
@@ -230,7 +247,9 @@ void* thread_main(void *input){
 
 			switch(lsm_req->type){
 				case LR_READ_T:
-					value=(char*)lsm_req->params[2];				
+				//	printf("%u\n",*key);
+					value=(char*)lsm_req->params[2];
+					//lsm_req->meta=new spsc_bounded_queue_t<void*>(2);
 					pthread_mutex_init(&lsm_req->meta_lock,NULL);
 					//measure_start(&mt2);
 					//MS(&rt);
@@ -276,6 +295,8 @@ void threadset_start(threadset* input){
 	pthread_create(&input->gc_thread.id,NULL,&thread_gc_main,(void*)input);
 }
 void threadset_read_assign(threadset* input, lsmtree_req_t *req){
+	if(req==NULL)
+		printf("assign NULL\n");
 	while(!input->read_q->enqueue(req)){}
 	pthread_cond_broadcast(&read_cond);
 }
@@ -286,6 +307,7 @@ void threadset_read_assign(threadset* input, lsmtree_req_t *req){
 void threadset_assign(threadset* input, lsmtree_req_t *req){
 	while(!input->req_q->enqueue(req)){
 	}
+	pthread_cond_broadcast(&write_cond);
 }
 void threadset_gc_assign(threadset* input ,lsmtree_gc_req_t *req){
 	while(!input->gc_q->enqueue(req)){}
@@ -315,7 +337,6 @@ void threadset_read_wait(threadset *input){
 	while(1){
 		pthread_mutex_lock(&input->threads[i].activated_check);
 		if(input->threads[i].isactivated){
-			pthread_cond_wait(&input->threads[i].activated_cond,&input->threads[i].activated_check);
 			pthread_mutex_unlock(&input->threads[i].activated_check);
 		}
 		else{
@@ -336,7 +357,7 @@ void threadset_request_wait(threadset *input){
 	while(1){
 		pthread_mutex_lock(&input->threads[0].activated_check);
 		if(input->threads[0].isactivated){
-			pthread_cond_wait(&input->threads[0].activated_cond,&input->threads[0].activated_check);
+			pthread_mutex_unlock(&input->threads[0].activated_check);
 		}
 		else{
 			if(emptyflag){

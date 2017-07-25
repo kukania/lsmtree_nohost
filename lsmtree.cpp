@@ -5,7 +5,7 @@
 #include"measure.h"
 #include"threading.h"
 #include"LR_inter.h"
-
+#include"lsm_cache.h"
 #include<time.h>
 #include<pthread.h>
 #include<string.h>
@@ -165,62 +165,49 @@ MeasureTime find;
 */
 int meta_read_data;
 int thread_get(lsmtree *LSM, KEYT key, threading *input, char *ret,lsmtree_req_t* req){
+	req->seq_number=0;
 	int tempidx=0;
-//	MS(&mem);
 	snode* res=skiplist_find(LSM->memtree,key);
 	if(res!=NULL){
 		ret=res->value;
-//		MA(&mem);
 		return 2;
 	}
-//	MA(&mem);
-/*
+
 	res=NULL;
-	res=skiplist_find(LSM->sstable,key);
-	if(res!=NULL){
-		memcpy(ret,res->value,PAGESIZE);
-		return 2;
-	}
-*/
-	res=NULL;
-//	MS(&last);
 	res=skiplist_find(LSM->buf.lastB,key);
 	if(res!=NULL){
 		ret=res->value;
-//		MA(&last);
 		return 2;
 	}
-//	MA(&last);
-
-//	MS(&buf);
-	if(input->buf_data!=NULL){
-		keyset *temp_key=skiplist_keyset_find(input->buf_data,key);
-		if(temp_key!=NULL){
-			skiplist_keyset_read(temp_key,ret,LSM->dfd,req);
-//			MA(&buf);
-			return 1;
-		}
-	}
-//	MA(&buf);
 
 	//thread_disk_get(LSM,key,req,0);
+	void *meta;
 	for(int i=0; i<LEVELN; i++){
+		keyset *temp_key=NULL;
 		if(LSM->buf.disk[i]!=NULL){
 			Entry *temp=level_find(LSM->buf.disk[i],key);
 			if(temp==NULL){
 				continue;
 			}
-			pthread_mutex_lock(&req->meta_lock);
-			skiplist_meta_read_n(temp->pbn,LSM->dfd,0,req);
-			input->header_read++;
-		//	MS(&input->waiting);
-			pthread_mutex_lock(&req->meta_lock);
-		//	MA(&input->waiting);
-			sktable *sk=(sktable*)req->keys;
-			keyset *temp_key=skiplist_keyset_find(sk,key);
+			temp_key=cache_level_find(&input->master->mycache,i,key);
 			if(temp_key!=NULL){
 				skiplist_keyset_read(temp_key,ret,LSM->dfd,req);
-				memio_free_dma(2,req->dmatag);
+				return 1;
+			}
+			temp_key=NULL;
+				
+			pthread_mutex_lock(&req->meta_lock);
+			skiplist_meta_read_n(temp->pbn,LSM->dfd,0,req);
+			input->header_read++;	
+			pthread_mutex_lock(&req->meta_lock);
+		//	while(!req->meta->dequeue(&meta)){}
+		//	printf("header read!\n");
+
+			sktable *sk=(sktable*)req->keys;
+			temp_key=skiplist_keyset_find(sk,key);
+			if(temp_key!=NULL){
+				skiplist_keyset_read(temp_key,ret,LSM->dfd,req);
+				cache_input(&input->master->mycache,i,sk,req->dmatag);
 				return 1;
 			}
 			else{

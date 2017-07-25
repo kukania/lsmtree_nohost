@@ -16,7 +16,7 @@
 #define INPUTSIZE (1024*128)
 #define BUSYPOINT 0.7
 #define THREADQN 1024
-#define THREADNUM 10
+#define THREADNUM 5
 #define THREAD //-do thread
 //#define DEBUG_THREAD 
 //#define NOR //- not read data
