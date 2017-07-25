@@ -104,10 +104,7 @@ int8_t lr_make_req(req_t *r){
 			MS(&mas2);*/
 /*		if(th_req->type==LR_READ_T)
 			MS(&mas);*/
-		if(th_req->type==LR_WRITE_T)
-			threadset_assign(&processor,th_req);		
-		else
-			threadset_read_assign(&processor,th_req);
+		threadset_assign(&processor,th_req);		
 		/*if(th_req->type==LR_READ_T)
 			MA(&mas);*//*
 		if(th_req->type==LR_WRITE_T)
@@ -130,6 +127,7 @@ int8_t lr_end_req(lsmtree_req_t *r){
 			parent=r->parent;
 			parent->keys=r->keys;
 			parent->dmatag=r->dmatag;
+			threadset_read_assign(&processor,parent);
 		//	while(!parent->meta->enqueue(data)){}
 			//memcpy(parent->res,r->keys,PAGESIZE);
 #ifndef NDMA
@@ -138,26 +136,12 @@ int8_t lr_end_req(lsmtree_req_t *r){
 			free(r->keys);
 #endif
 	//		MS(&bp);
-			pthread_mutex_unlock(&parent->meta_lock);
+	//		pthread_mutex_unlock(&parent->meta_lock);
 	//		MA(&bp);
 			break;
 		case LR_DDR_T:
 			parent=r->parent;
-			parent->end_req(parent);/*
-									   if(!check_time){
-									   check_time=true;
-									   max_time=MR(&r->mt);
-									   if(timercmp(&max_time,&test_time,>))
-									   big_time_check++;
-									   }
-									   else{
-									   res=MR(&r->mt);
-									   if(timercmp(&res,&test_time,>))
-									   big_time_check++;
-									   if(timercmp(&max_time,&res,<))
-									   max_time=res;
-									   }*/
-			//	ME(&r->mt,"read done");
+			parent->end_req(parent);	
 			r->req=NULL;
 			break;
 		case LR_DDW_T:
@@ -167,9 +151,10 @@ int8_t lr_end_req(lsmtree_req_t *r){
 			free(r->req->value);
 #endif
 			break;
+		case DISK_READ_T:
 		case LR_READ_T:
 //			delete r->meta;
-			pthread_mutex_destroy(&r->meta_lock);
+//			pthread_mutex_destroy(&r->meta_lock);
 #ifndef NDMA
 			memio_free_dma(2,r->req->dmaTag);
 			endcheck++;

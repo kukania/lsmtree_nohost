@@ -28,7 +28,7 @@ bool is_gc_needed(lsmtree *);
 bool compaction(lsmtree *,level *, level *,Entry *,lsmtree_gc_req_t *);
 int get(lsmtree *,KEYT key,char *);
 int thread_get(lsmtree *,KEYT key,threading *, char *value,lsmtree_req_t *);
-int thread_disk_get(lsmtree *,KEYT ,lsmtree_req_t *, int);
+int thread_level_get(lsmtree *,KEYT key,threading *,char *value,lsmtree_req_t *, int);
 void lsm_free(lsmtree *);
 KEYT write_data(lsmtree *LSM,skiplist *,lsmtree_gc_req_t *);
 bool is_flush_needed(lsmtree * );

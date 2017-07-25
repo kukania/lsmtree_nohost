@@ -136,26 +136,7 @@ bool put(lsmtree *LSM,KEYT key, char *value,lsmtree_req_t *req){
 	}
 	return false;
 }
-int thread_disk_get(lsmtree *LSM, KEYT key, lsmtree_req_t *req, int level){
-	while(1){
-		if(LSM->buf.disk[level]!=NULL){
-			Entry *temp=level_find(LSM->buf.disk[level],key);
-			if(temp==NULL){
-				level++;
-				continue;
-			}
-			req->now_number=0;
-			req->target_number=2;
-			req->flag=level;
-			req->res=(sktable *)malloc(sizeof(sktable));
-			skiplist_meta_read_n(temp->pbn,LSM->dfd,0,req);
-			skiplist_meta_read_n(temp->pbn+1,LSM->dfd,1,req);
-			return 1;
-		}
-		else
-			return -1;
-	}
-}
+
 /*
 MeasureTime mem;
 MeasureTime last;
@@ -164,6 +145,34 @@ MeasureTime bp;
 MeasureTime find;
 */
 int meta_read_data;
+int thread_level_get(lsmtree *LSM,KEYT key, threading *input, char *ret, lsmtree_req_t *req, int l){
+	if(l>=LEVELN)
+		return 0;
+	keyset *temp_key=NULL;
+	sktable *sk=(sktable*)req->keys;
+	temp_key=skiplist_keyset_find(sk,key);
+	if(temp_key!=NULL){
+		skiplist_keyset_read(temp_key,ret,LSM->dfd,req);
+		cache_input(&input->master->mycache,l,sk,req->dmatag);
+		return 1;
+	}
+	memio_free_dma(2,req->dmatag);
+
+	temp_key=cache_level_find(&input->master->mycache,l+1,key);
+	if(temp_key!=NULL){
+		skiplist_keyset_read(temp_key,ret,LSM->dfd,req);
+		return 1;
+	}
+	for(int i=l+1; i<LEVELN; i++){
+		req->flag=i;
+		Entry *temp=level_find(LSM->buf.disk[i],key);
+		if(temp==NULL)
+			continue;
+		skiplist_meta_read_n(temp->pbn,LSM->dfd,0,req);
+		return 3;
+	}
+	return 0;
+}
 int thread_get(lsmtree *LSM, KEYT key, threading *input, char *ret,lsmtree_req_t* req){
 	req->seq_number=0;
 	int tempidx=0;
@@ -181,6 +190,24 @@ int thread_get(lsmtree *LSM, KEYT key, threading *input, char *ret,lsmtree_req_t
 	}
 
 	//thread_disk_get(LSM,key,req,0);
+	keyset *temp_key=NULL;
+	temp_key=cache_level_find(&input->master->mycache,0,key);
+	if(temp_key!=NULL){
+		skiplist_keyset_read(temp_key,ret,LSM->dfd,req);
+		return 1;
+	}
+	
+	req->type=DISK_READ_T;
+	for(int i=0; i<LEVELN; i++){
+		req->flag=i;
+		Entry *temp=level_find(LSM->buf.disk[i],key);
+		if(temp==NULL)
+			continue;
+		skiplist_meta_read_n(temp->pbn,LSM->dfd,0,req);
+		return 3;
+	}
+	return 0;
+	/*
 	void *meta;
 	for(int i=0; i<LEVELN; i++){
 		keyset *temp_key=NULL;
@@ -217,52 +244,7 @@ int thread_get(lsmtree *LSM, KEYT key, threading *input, char *ret,lsmtree_req_t
 		}
 		else
 			break;
-	}
-	return 0;
-}
-
-int get(lsmtree *LSM,KEYT key,char *ret){/*
-											int tempidx=0;
-											snode* res=skiplist_find(LSM->memtree,key);
-											if(res!=NULL){
-											memcpy(ret,res->value,PAGESIZE);
-											return 1;
-											}
-
-											if(LSM->buf.data!=NULL){
-											if(skiplist_keyset_read(skiplist_keyset_find(LSM->buf.data,key),ret,LSM->dfd)){
-											return 1;	
-											}
-											}
-
-											for(int i=0; i<LEVELN; i++){
-											if(LSM->buf.disk[i]!=NULL){
-											Entry *temp=level_find(LSM->buf.disk[i],key);
-											if(temp==NULL) continue;
-											sktable *readed=skiplist_meta_read(temp->pbn,LSM->dfd);
-											if(skiplist_keyset_read(skiplist_keyset_find(readed,key),ret,LSM->dfd)){
-											if(LSM->buf.data!=NULL){
-											free(LSM->buf.data);
-											}
-											LSM->buf.data=readed;	
-											return 1;
-											}
-											free(readed);
-											}
-											else
-											break;
-											}
-
-											res=NULL;
-											res=skiplist_find(LSM->buf.lastB,key);
-											if(res!=NULL){
-											keyset read_temp;
-											read_temp.key=res->key;
-											read_temp.ppa=res->ppa;
-											skiplist_keyset_read(&read_temp,ret,LSM->dfd);
-											return 1;
-											}*/
-	return 0;
+	}*/
 }
 lsmtree* lsm_reset(lsmtree* input){
 	input->memtree=(skiplist*)malloc(sizeof(skiplist));

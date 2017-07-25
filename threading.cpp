@@ -75,7 +75,7 @@ void threadset_init(threadset* input){
 #endif
 	input->activatednum=input->max_act=0;
 	input->req_q=new spsc_bounded_queue_t<void*>(THREADQN);
-	input->read_q=new mpmc_bounded_queue_t<void*>(THREADQN);
+	input->read_q=new spsc_bounded_queue_t<void*>(THREADQN);
 	input->gc_q=new spsc_bounded_queue_t<void*>(2);
 	//	input->req_q=create_queue();
 
@@ -197,9 +197,18 @@ void* thread_main(void *input){
 		void *data=NULL;
 		pthread_mutex_lock(&myth->activated_check);
 		myth->isactivated=false;
-		pthread_cond_broadcast(&myth->activated_cond);
+	//	pthread_cond_broadcast(&myth->activated_cond);
 		pthread_mutex_unlock(&myth->activated_check);
-
+		while(1){
+			if(!master->read_q->dequeue(&data)){
+				if(!master->req_q->dequeue(&data)){
+					continue;
+				}
+				break;
+			}
+			break;
+		}
+		/*
 		if(number==0){
 			if(!master->req_q->dequeue(&data)){
 				pthread_cond_wait(&write_cond,&write_lock);
@@ -221,6 +230,7 @@ void* thread_main(void *input){
 			}
 			//	while(!master->read_q->dequeue(&data)){}
 		}
+		*/
 		if(data==NULL){
 			printf("get NULL\n");
 		}
@@ -233,26 +243,27 @@ void* thread_main(void *input){
 		else{
 			pthread_mutex_lock(&myth->activated_check);
 			myth->isactivated=true;
-			pthread_cond_broadcast(&myth->activated_cond);
+	//		pthread_cond_broadcast(&myth->activated_cond);
 			pthread_mutex_unlock(&myth->activated_check);
 
 			pthread_mutex_unlock(&myth->terminate);
 
 			KEYT *key=(KEYT*)lsm_req->params[1];
-			//			printf("%lu\n",*key);
-			//printf("size:%llu\n",master->req_q->size());
 			char *value;		
 			lsmtree *LSM=(lsmtree*)lsm_req->params[3];
 			int test_num;
 
 			switch(lsm_req->type){
-				case LR_READ_T:
-				//	printf("%u\n",*key);
+				case DISK_READ_T:
 					value=(char*)lsm_req->params[2];
-					//lsm_req->meta=new spsc_bounded_queue_t<void*>(2);
-					pthread_mutex_init(&lsm_req->meta_lock,NULL);
-					//measure_start(&mt2);
-					//MS(&rt);
+					test_num=thread_level_get(LSM,*key,myth,value,lsm_req,lsm_req->flag);
+					if(test_num==0){
+						printf("[%u]not_found\n",*key);
+						lsm_req->end_req(lsm_req);
+					}
+					break;
+				case LR_READ_T:
+					value=(char*)lsm_req->params[2];
 					test_num=thread_get(LSM,*key,myth,value,lsm_req);
 					if(test_num==0){
 						printf("[%u]not_found\n",*key);
@@ -260,10 +271,6 @@ void* thread_main(void *input){
 					}
 					if(test_num==2)
 						lsm_req->end_req(lsm_req);
-					//MA(&rt);
-					//printf("%d",cnt++);
-					//measure_end(&mt2,"get");
-					//	lsm_req->end_req(lsm_req);
 					break;
 				case LR_WRITE_T:
 					//MS(&gt);
@@ -281,8 +288,6 @@ void* thread_main(void *input){
 				default:
 					break;
 			}
-			//myth->isactivated=false;
-			//		ME(&mt2,"put");
 		}
 	}
 	return NULL;

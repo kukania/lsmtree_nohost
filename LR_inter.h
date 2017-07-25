@@ -12,7 +12,7 @@
 /**request type***/
 #define LR_READ_T 	32
 #define BUFFER_READ 33
-#define DISK_READ   34
+#define DISK_READ_T 34
 #define LR_WRITE_T 	8
 #define LR_COMP_T	4
 #define LR_FLUSH_T	16
