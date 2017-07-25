@@ -29,11 +29,11 @@
 #define READTEST
 #define GETTEST
 
-#define CACHENUM 2
+#define CACHENUM 5
 
 #define SNODE_SIZE (8192)
 //#define SKIP_BLOCK ((4096+sizeof(int)*3)*1000)//(snode data+ meta)* # of snode
-#define SKIP_META (sizeof(uint64_t)*2*1024)//snode meta * # of snode + size of skiplist
+//#define SKIP_META (sizeof(uint64_t)*2*1024)//snode meta * # of snode + size of skiplist
 
 
 #ifndef NPRINTOPTION

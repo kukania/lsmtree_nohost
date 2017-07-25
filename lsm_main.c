@@ -37,6 +37,8 @@ extern timeval max_time1,adding;
 extern int big_time_check1;
 extern int endcheck;
 extern int meta_read_data;
+
+extern lsmtree *LSM;
 KEYT *keys;
 int cnnt=0;
 int main(){
@@ -132,6 +134,10 @@ int main(){
 	printf("max:%ld sec and %.6f\n",max_time.tv_sec,(float)max_time.tv_usec/1000000);
 	printf("over time (%d): %d\n",INPUTSIZE,big_time_check);*/
 	//lr_inter_free();
+	for(int i=0; i<LEVELN; i++){
+		printf("\n--------------[level %d]-------\n",i);
+		level_print(LSM->buf.disk[i]);
+	}
 	threadset_debug_print(&processor);
 	cache_summary(&processor.mycache);
 }

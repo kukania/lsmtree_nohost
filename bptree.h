@@ -42,6 +42,7 @@ Entry **level_range_find(level *,KEYT start,KEYT end);
 Node *level_insert(level*,Entry *);
 Node *level_delete(level*,KEYT);
 Entry *level_getFirst(level *);
+void level_print(level *);
 void free_entry(Entry *);
 void level_free(level*);
 #endif

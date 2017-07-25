@@ -310,8 +310,10 @@ bool compaction(lsmtree *LSM,level *src, level *des,Entry *ent,lsmtree_gc_req_t 
 		for(int i=0; iter[i]!=NULL ;i++){
 			Entry *temp_e=iter[i];
 			delete_set[deleteIdx++]=temp_e->key;
-			if(temp_e->key > INPUTSIZE)
-				printf("??");
+			if(temp_e->key > INPUTSIZE){
+				printf("des print!!!\n");
+				level_print(des);
+			}
 			skiplist_meta_read_c(temp_e->pbn,LSM->dfd,counter++,req);
 		}
 		skiplist_meta_read_c(target->pbn,LSM->dfd,counter++,req);
@@ -323,7 +325,7 @@ bool compaction(lsmtree *LSM,level *src, level *des,Entry *ent,lsmtree_gc_req_t 
 		level_insert(des,target);
 	}
 	else{
-		printf("waiting:%d!\n",wn++);
+	//	printf("waiting:%d!\n",wn++);
 		lr_gc_req_wait(req);//wait for all read;
 
 		if(src!=NULL)

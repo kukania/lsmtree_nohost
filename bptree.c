@@ -94,7 +94,7 @@ Entry **level_range_find(level *lev, KEYT start, KEYT end){
 	Entry *temp=startN->children[0].entry;
 	if(temp==NULL) return NULL;
 	Entry **res=(Entry **)malloc(sizeof(Entry *)*(lev->m_size+1));
-	//printf("size:%d\n",lev->m_size);
+	printf("nsize:%d msize:%d key:%u~%u\n",lev->size,lev->m_size,start,end);
 	int idx=0;
 	int cnt=1;
 	bool startingFlag=false;
@@ -121,11 +121,33 @@ Entry **level_range_find(level *lev, KEYT start, KEYT end){
 }
 
 Entry *level_get_victim(level *lev){
-	Entry *temp=level_getFirst(lev);
-	Entry *res;
-	KEYT min=-1;
-	int cnt=0;
+	Node *startN=level_find_leafnode(lev,0);
+	Entry *temp=startN->children[0].entry;
+	Entry *res=temp;
+	if(temp==NULL) return NULL;
+	int idx=0;
+	int cnt=1;
+	bool startingFlag=false;
+	while(1){
+		if(res->version>temp->version)
+			res=temp;
+		if(cnt <startN->count){
+			temp=startN->children[cnt++].entry;
+		}
+		else{
+			startN=startN->children[MAXC].node;
+			if(startN==NULL) break;
+			temp=startN->children[0].entry;
+			cnt=1;
+		}
+	}
+	return res;
 	/*
+	Entry *temp=level_getFirst(lev);
+	Entry *res=temp;
+	KEYT version=tmep->version;
+	temp=temp->parent->children[1].entry;
+	int cnt=0;
 	while(temp!=NULL){
 		if(temp->key <min){
 			res=temp;
@@ -141,9 +163,8 @@ Entry *level_get_victim(level *lev){
 			cnt=1;
 		}
 		
-	}*/
-	return temp;
-	
+	}
+	return temp;*/
 }
 
 
@@ -468,58 +489,50 @@ void level_free(level *lev){
 	free(lev->root);
 	free(lev);
 }
+void level_print(level *lev){
+	if(lev->size==0)
+		return;
+	Entry *iter=level_getFirst(lev);
+	Node *startN=iter->parent;
+	int cnt=1;
+	while(1){
+		printf("%u\n",iter->key);
+		if(cnt <startN->count){
+			iter=startN->children[cnt++].entry;
+		}
+		else{
+			startN=startN->children[MAXC].node;
+			if(startN==NULL) break;
+			iter=startN->children[0].entry;
+			cnt=1;
+		}
+	}
+}
 #ifdef DEBUG_B
 #include<stdio.h>
 #include<time.h>
 int main(){
 	level *lev=(level*)malloc(sizeof(level));
-	lev=level_init(lev,1000);
-	for(int i=1; i<1001; i++){
+	lev=level_init(lev,100000);
+	for(int i=1; i<100001; i++){
 		level_insert(lev,make_entry(i,i,i));
 	}
 	Entry *res;
-	for(int i=0; i<900; i++){
+	while(lev->size>=100){
 		int key=rand();
-		key%=1000;
+		key%=100000;
 		key++;
 		level_delete(lev,key);
 	}
 	printf("test\n");
 
-	Entry *temp=level_getFirst(lev);
+	Entry *temp=level_get_victim(lev);
 	int cnt=1;
 	while(temp!=NULL){
-		printf("%lld\n",temp->key);
-		if(cnt<temp->parent->count){
-			temp=temp->parent->children[cnt++].entry;
-		}
-		else{
-			if(temp->parent->children[MAXC].node==NULL) break;
-			temp=temp->parent->children[MAXC].node->children[0].entry;
-			cnt=1;
-		}
+		printf("%u\n",temp->key);
+		level_delete(lev,temp->key);
+		temp=level_get_victim(lev);
 	}
 	level_free(lev);
 }
 #endif
-/*
-   bpIterator *range_find_iterator(level *lev, BKEYT start, BKEYT end){
-   bpIterator *iter=(bpIterator*)malloc(sizeof(bpIterator));
-   iter->start=level_find_leafnode(lev,start);
-   iter->end=level_find_leafnode(lev,end);
-   iter->now=iter->start;
-   iter->num=0;
-   iter->startK=start; iter->endK=end;
-   return iter;
-   }
-
-   Node *level_delete_by_iter(level *lev,bpIterator** iter){
-   Entry *temp=bp_getNext(*iter);
-   if(temp==NULL) return NULL;
-   Node *res=level_delete(lev,temp->key);
-   bpIterator *tempI=*iter;
- *iter=range_find_iterator(lev,(*iter)->startK,(*iter)->endK);
- free(tempI);
- return res;
- }*/
-
