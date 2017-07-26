@@ -13,7 +13,7 @@
 #define PAGESIZE (8192)
 #define MUL 24
 #define LEVELN 5
-#define INPUTSIZE (1024*128)
+#define INPUTSIZE (1024*256)
 #define BUSYPOINT 0.7
 #define THREADQN 1024
 #define THREADNUM 1
@@ -29,7 +29,10 @@
 #define READTEST
 #define GETTEST
 
-#define CACHENUM 5
+#define CACHENUM 	5
+#define WAITREQN	16
+#define WAITMETAN	128
+
 
 #define SNODE_SIZE (8192)
 //#define SKIP_BLOCK ((4096+sizeof(int)*3)*1000)//(snode data+ meta)* # of snode

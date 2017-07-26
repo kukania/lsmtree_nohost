@@ -36,7 +36,7 @@ LIBFTL_INC += \
        -D CONFIG_ENABLE_DEBUG \
        -D USE_PMU \
        -D USE_NEW_RMW \
-	   -g \
+	#   -g \
        #-D ZYNQ=1 \
  
 CFLAGS += $(EXTRA_CFLAGS)

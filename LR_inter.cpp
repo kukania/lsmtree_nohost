@@ -127,6 +127,7 @@ int8_t lr_end_req(lsmtree_req_t *r){
 			parent=r->parent;
 			parent->keys=r->keys;
 			parent->dmatag=r->dmatag;
+			pthread_mutex_unlock(&parent->meta_lock);
 			threadset_read_assign(&processor,parent);
 		//	while(!parent->meta->enqueue(data)){}
 			//memcpy(parent->res,r->keys,PAGESIZE);
@@ -136,7 +137,6 @@ int8_t lr_end_req(lsmtree_req_t *r){
 			free(r->keys);
 #endif
 	//		MS(&bp);
-	//		pthread_mutex_unlock(&parent->meta_lock);
 	//		MA(&bp);
 			break;
 		case LR_DDR_T:

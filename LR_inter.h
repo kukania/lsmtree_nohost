@@ -54,7 +54,6 @@ typedef struct lsmtree_gc_req_t{
 	skiplist * skip_data;
 
 	MeasureTime mt;
-	spsc_bounded_queue_t <void *>meta;
 }lsmtree_gc_req_t;
 
 typedef struct lsmtree_req_t{
@@ -76,7 +75,6 @@ typedef struct lsmtree_req_t{
 	char *dummy;
 
 	MeasureTime mt;
-	spsc_bounded_queue_t<void *>* meta;
 }lsmtree_req_t;
 
 int8_t lr_make_req(req_t *);

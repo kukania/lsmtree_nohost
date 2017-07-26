@@ -52,9 +52,8 @@ int main(){
 	measure_start(&mt);
 	keys=(KEYT*)malloc(sizeof(KEYT)*INPUTSIZE);
 	for(int i=0; i<INPUTSIZE; i++){
-		keys[i]=rand()%INPUTSIZE+1;
+		keys[i]=rand()%INT_MAX+1;
 	}
-	srand(1);
 	int cnt=1;
 	for(int i=1; i<=INPUTSIZE; i++){
 		//printf("%d\n",i);
@@ -87,13 +86,12 @@ int main(){
 	//sleep(1);
 	printf("read!\n");
 	measure_start(&mt);
-	srand(1);
 	//printf("??");
 	for(int i=1; i<=INPUTSIZE; i++){
 		req=(req_t*)malloc(sizeof(req_t));
 		req->type=2;
-		//if(i%1024==0)
-		//	printf("%d throw\n",i);
+//		if(i%1024==0)
+//			printf("%d throw\n",i);
 		if(SEQUENCE==0){
 			key=keys[i-1];
 		}
@@ -134,10 +132,11 @@ int main(){
 	printf("max:%ld sec and %.6f\n",max_time.tv_sec,(float)max_time.tv_usec/1000000);
 	printf("over time (%d): %d\n",INPUTSIZE,big_time_check);*/
 	//lr_inter_free();
+	/*
 	for(int i=0; i<LEVELN; i++){
 		printf("\n--------------[level %d]-------\n",i);
 		level_print(LSM->buf.disk[i]);
-	}
+	}*/
 	threadset_debug_print(&processor);
 	cache_summary(&processor.mycache);
 }

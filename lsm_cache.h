@@ -12,7 +12,6 @@ typedef struct {
 }cache;
 typedef struct{
 	cache caches[LEVELN][CACHENUM];
-	pthread_rwlock_t rwlock[LEVELN];
 	uint64_t time_bit;
 }lsm_cache;
 
