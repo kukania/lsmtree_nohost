@@ -22,13 +22,13 @@ LIBFTL_LIB= ../../../bdbm_drv/frontend/libmemio/libmemio.a
 AM_LINK= $(AM_V_CCLD)$(CXX) $^ $(EXEC_LDFLAGS) -o $@ $(LDFLAGS) $(COVERAGEFLAGS) $(LIBFTL_LIB)
  
 LIBFTL_INC += \
-       -I../../../bdbm_drv/frontend/libmemio \
-       -I../../../bdbm_drv/frontend/nvme \
-       -I../../../bdbm_drv/ftl \
-       -I../../../bdbm_drv/include \
-       -I../../../bdbm_drv/common/utils \
-       -I../../../bdbm_drv/common/3rd \
-       -I../../../bdbm_drv/devices/common \
+       -I../bdbm_drv/frontend/libmemio \
+       -I../bdbm_drv/frontend/nvme \
+       -I../bdbm_drv/ftl \
+       -I../bdbm_drv/include \
+       -I../bdbm_drv/common/utils \
+       -I../bdbm_drv/common/3rd \
+       -I../bdbm_drv/devices/common \
        -I./ \
        -D USER_MODE \
        -D HASH_BLOOM=20 \

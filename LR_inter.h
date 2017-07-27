@@ -5,9 +5,9 @@
 #include<pthread.h>
 #include"skiplist.h"
 #include"utils.h"
-#include"lockfreeq.h"
+//#include"lockfreeq.h"
 #ifndef LIBLSM
-#include"request.h"
+//#include"request.h"
 #endif
 /**request type***/
 #define LR_READ_T 	32

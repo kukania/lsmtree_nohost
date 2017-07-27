@@ -241,9 +241,7 @@ void* thread_main(void *input){
 				case LR_READ_T:
 					value=(char*)lsm_req->params[2];
 					pthread_mutex_init(&lsm_req->meta_lock,NULL);
-					MS(&bp);
 					test_num=thread_get(LSM,*key,myth,value,lsm_req);
-					MA(&bp);
 					if(test_num==0){
 						printf("[%u]not_found\n",*key);
 						lsm_req->end_req(lsm_req);
