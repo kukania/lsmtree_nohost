@@ -34,6 +34,10 @@ MeasureTime buf;
 MeasureTime bp;
 MeasureTime find;
 
+int cache_hit;
+int pros_hit2;
+int pros_hit;
+int mem_hit;
 /*
 0: memtable
 1~LEVELN : level
@@ -149,34 +153,36 @@ int thread_level_get(lsmtree *LSM,KEYT key, threading *input, char *ret, lsmtree
 	if(l>=LEVELN)
 		return 0;
 	keyset *temp_key=NULL;
-	sktable *sk=(sktable*)req->keys;
+
 	for(int i=0; i<WAITREQN; i++){
 		if(input->pre_req[i]==req){
 			input->pre_req[i]=NULL;
 			break;
 		}
 	}
+	sktable *sk=(sktable*)req->keys;
 	temp_key=skiplist_keyset_find(sk,key);
 	if(temp_key!=NULL){
 		skiplist_keyset_read(temp_key,ret,LSM->dfd,req);
 		cache_input(&input->master->mycache,l,sk,req->dmatag);
 		return 1;
 	}
-	//printf("freed!\n");
 	memio_free_dma(2,req->dmatag);
-
+	//printf("freed!\n");
 	bool metaflag;
+	bool returnflag=0;
 	for(int i=l+1; i<LEVELN; i++){
 		metaflag=false;
 		req->flag=i;
-		temp_key=cache_level_find(&input->master->mycache,l+1,key);
+		temp_key=cache_level_find(&input->master->mycache,i,key);
 		if(temp_key!=NULL){
 			skiplist_keyset_read(temp_key,ret,LSM->dfd,req);
 			return 1;
 		}
 		Entry *temp=level_find(LSM->buf.disk[i],key);
-		if(temp==NULL)
+		if(temp==NULL){
 			continue;
+		}
 
 		for(int j=0; j<WAITREQN; j++){
 			if(input->pre_req[j]!=NULL){
@@ -187,7 +193,7 @@ int thread_level_get(lsmtree *LSM,KEYT key, threading *input, char *ret, lsmtree
 					pthread_mutex_unlock(&input->pre_req[j]->meta_lock);
 					if(temp_key!=NULL){
 						skiplist_keyset_read(temp_key,ret,LSM->dfd,req);
-						cache_input(&input->master->mycache,i,sk,input->pre_req[j]->dmatag);
+						pros_hit2++;
 						return 1;
 					}
 					else{
@@ -197,8 +203,10 @@ int thread_level_get(lsmtree *LSM,KEYT key, threading *input, char *ret, lsmtree
 				}
 			}
 		}
-		if(metaflag)
+		if(metaflag){
+			returnflag=-1;
 			continue;
+		}
 
 		for(int j=0; j<WAITREQN; j++){
 			if(input->pre_req[j]==NULL){
@@ -212,13 +220,14 @@ int thread_level_get(lsmtree *LSM,KEYT key, threading *input, char *ret, lsmtree
 		skiplist_meta_read_n(temp->pbn,LSM->dfd,0,req);
 		return 3;
 	}
-	return 0;
+	return returnflag;
 }
 int thread_get(lsmtree *LSM, KEYT key, threading *input, char *ret,lsmtree_req_t* req){
 	req->seq_number=0;
 	int tempidx=0;
 	snode* res=skiplist_find(LSM->memtree,key);
 	if(res!=NULL){
+		mem_hit++;
 		ret=res->value;
 		return 2;
 	}
@@ -226,6 +235,7 @@ int thread_get(lsmtree *LSM, KEYT key, threading *input, char *ret,lsmtree_req_t
 	res=NULL;
 	res=skiplist_find(LSM->buf.lastB,key);
 	if(res!=NULL){
+		mem_hit++;
 		ret=res->value;
 		return 2;
 	}
@@ -233,46 +243,37 @@ int thread_get(lsmtree *LSM, KEYT key, threading *input, char *ret,lsmtree_req_t
 	//thread_disk_get(LSM,key,req,0);
 
 	int flag=0;
-	keyset *temp_key=NULL;/*
-							 for(int i=0; i<WAITREQN; i++){
-							 if(input->pre_req[i]!=NULL){
-							 if(key>=input->req_range[i].start && key<=input->req_range[i].end){
-							 pthread_mutex_lock(&input->pre_req[i]->meta_lock);
-							 sktable *sk=(sktable*)input->pre_req[i]->keys;
-							 temp_key=skiplist_keyset_find(sk,key);
-							 pthread_mutex_unlock(&input->pre_req[i]->meta_lock);
-							 if(temp_key!=NULL){
-							 skiplist_keyset_read(temp_key,ret,LSM->dfd,req);
-							 return 1;
-							 }
-							 }
-							 }
-							 }*/
+	keyset *temp_key=NULL;
 
 	bool metaflag;
 	req->type=DISK_READ_T;
 	for(int i=0; i<LEVELN; i++){
 		metaflag=false;
-		req->flag=i;	
+		req->flag=i;
 		temp_key=cache_level_find(&input->master->mycache,i,key);
+
 		if(temp_key!=NULL){
 			skiplist_keyset_read(temp_key,ret,LSM->dfd,req);
 			return 1;
 		}
+
 		Entry *temp=level_find(LSM->buf.disk[i],key);
+		int return_flag=3;
 		if(temp==NULL)
 			continue;
 		for(int j=0; j<WAITREQN; j++){
 			if(input->pre_req[j]!=NULL){
 				if(temp==input->entry[j]){
 					pthread_mutex_lock(&input->pre_req[j]->meta_lock);
-					sktable *sk=(sktable*)input->pre_req[j]->keys;
+					return_flag=4;
+					sktable *sk=(sktable *)input->pre_req[j]->keys;
 					temp_key=skiplist_keyset_find(sk,key);
 					pthread_mutex_unlock(&input->pre_req[j]->meta_lock);
+					
 					if(temp_key!=NULL){
 						skiplist_keyset_read(temp_key,ret,LSM->dfd,req);
-						cache_input(&input->master->mycache,i,sk,input->pre_req[j]->dmatag);
-						return 1;
+						pros_hit++;
+						return return_flag;
 					}
 					else{
 						metaflag=true;
@@ -281,8 +282,10 @@ int thread_get(lsmtree *LSM, KEYT key, threading *input, char *ret,lsmtree_req_t
 				}
 			}
 		}
-		if(metaflag)
+		if(metaflag){
+			req->seq_number=111;
 			continue;
+		}
 
 		for(int j=0; j<WAITREQN; j++){
 			if(input->pre_req[j]==NULL){
@@ -294,7 +297,7 @@ int thread_get(lsmtree *LSM, KEYT key, threading *input, char *ret,lsmtree_req_t
 		}
 		input->header_read++;
 		skiplist_meta_read_n(temp->pbn,LSM->dfd,0,req);
-		return 3;
+		return return_flag;
 	}
 	return 0;
 }

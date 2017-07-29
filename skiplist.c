@@ -375,7 +375,7 @@ KEYT skiplist_data_write(skiplist *data,int fd,lsmtree_gc_req_t * req){
 		pthread_mutex_lock(&dfd_lock);
 		if(lseek64(fd,((off64_t)PAGESIZE)*(ppa),SEEK_SET)==-1)
 			printf("lseek error in meta read!\n");
-
+		
 		write(fd,temp->value,PAGESIZE);
 		pthread_mutex_unlock(&dfd_lock);
 		child_req->end_req(child_req);

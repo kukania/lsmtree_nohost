@@ -22,12 +22,19 @@ pthread_mutex_t endR;
 
 extern MeasureTime bp;
 extern MeasureTime buf;
+
+extern int gc_end_check;
+extern int read_end_check;
+extern int write_end_check;
+
+pthread_mutex_t gc_cnt_lock;
 int8_t lr_inter_init(){
 	LSM=(lsmtree*)malloc(sizeof(lsmtree));
 	threadset_init(&processor);
 	threadset_start(&processor);
 	pthread_mutex_init(&pl,NULL);
 	pthread_mutex_init(&endR,NULL);
+	pthread_mutex_init(&gc_cnt_lock,NULL);
 	measure_init(&mt);
 	measure_init(&mas);
 	measure_init(&mas2);
@@ -58,6 +65,9 @@ int8_t lr_gc_make_req(int8_t t_num){
 	
 	gc_req=(lsmtree_gc_req_t*)malloc(sizeof(lsmtree_gc_req_t));
 	gc_req->type=LR_FLUSH_T;
+	pthread_mutex_lock(&gc_cnt_lock);
+	gc_end_check++;
+	pthread_mutex_unlock(&gc_cnt_lock);
 	gc_req->params[1]=NULL;
 	gc_req->params[2]=(void*)LSM->sstable;
 	gc_req->params[3]=(void*)LSM;
@@ -77,6 +87,7 @@ int8_t lr_make_req(req_t *r){
 #endif
 			case 3:
 			case 1://set
+				write_end_check++;
 				th_req->type=LR_WRITE_T;
 				break;
 			case 2://get
@@ -99,6 +110,8 @@ int8_t lr_make_req(req_t *r){
 		th_req->params[3]=(void*)LSM;
 #endif
 		th_req->isgc=false;
+		if(th_req->type==LR_READ_T)
+			th_req->now_number=make_cnt++;
 		/*
 		if(th_req->type==LR_WRITE_T)
 			MS(&mas2);*/
@@ -127,6 +140,7 @@ int8_t lr_end_req(lsmtree_req_t *r){
 			parent=r->parent;
 			parent->keys=r->keys;
 			parent->dmatag=r->dmatag;
+			//cache_input(&processor.mycache,parent->flag,(sktable*)r->keys,r->dmatag);
 			pthread_mutex_unlock(&parent->meta_lock);
 			threadset_read_assign(&processor,parent);
 		//	while(!parent->meta->enqueue(data)){}
@@ -153,11 +167,11 @@ int8_t lr_end_req(lsmtree_req_t *r){
 			break;
 		case DISK_READ_T:
 		case LR_READ_T:
+			read_end_check++;
 //			delete r->meta;
 //			pthread_mutex_destroy(&r->meta_lock);
 #ifndef NDMA
 			memio_free_dma(2,r->req->dmaTag);
-			endcheck++;
 #else
 			free(r->req->value);
 #endif
@@ -201,7 +215,10 @@ int8_t lr_gc_end_req(lsmtree_gc_req_t *r){
 			free(r->keys);
 #endif
 			break;
-		case LR_FLUSH_T:	
+		case LR_FLUSH_T:
+			pthread_mutex_lock(&gc_cnt_lock);
+			gc_end_check--;
+			pthread_mutex_unlock(&gc_cnt_lock);
 			pthread_mutex_destroy(&r->meta_lock);
 			if(r->compt_headers!=NULL)
 				free(r->compt_headers);
