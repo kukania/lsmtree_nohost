@@ -5,14 +5,14 @@
 #include<pthread.h>
 #include"skiplist.h"
 #include"utils.h"
-#include"lockfreeq.h"
+//#include"lockfreeq.h"
 #ifndef LIBLSM
-#include"request.h"
+//#include"request.h"
 #endif
 /**request type***/
 #define LR_READ_T 	32
 #define BUFFER_READ 33
-#define DISK_READ   34
+#define DISK_READ_T 34
 #define LR_WRITE_T 	8
 #define LR_COMP_T	4
 #define LR_FLUSH_T	16
@@ -54,7 +54,6 @@ typedef struct lsmtree_gc_req_t{
 	skiplist * skip_data;
 
 	MeasureTime mt;
-	spsc_bounded_queue_t <void *>meta;
 }lsmtree_gc_req_t;
 
 typedef struct lsmtree_req_t{
@@ -76,7 +75,6 @@ typedef struct lsmtree_req_t{
 	char *dummy;
 
 	MeasureTime mt;
-	spsc_bounded_queue_t<void *>* meta;
 }lsmtree_req_t;
 
 int8_t lr_make_req(req_t *);

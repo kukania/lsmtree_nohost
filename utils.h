@@ -16,7 +16,7 @@
 #define INPUTSIZE (1024*128)
 #define BUSYPOINT 0.7
 #define THREADQN 1024
-#define THREADNUM 10
+#define THREADNUM 1
 #define THREAD //-do thread
 //#define DEBUG_THREAD 
 //#define NOR //- not read data
@@ -29,7 +29,11 @@
 #define READTEST
 #define GETTEST
 
-#define CACHENUM 5
+#define CACHENUM 	2
+#define CACHETH     100
+#define WAITREQN	16
+#define WAITMETAN	128
+
 
 #define SNODE_SIZE (8192)
 //#define SKIP_BLOCK ((4096+sizeof(int)*3)*1000)//(snode data+ meta)* # of snode
