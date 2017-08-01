@@ -9,14 +9,14 @@
 #define FILTERFUNC 5
 #define FILTERBIT ((1000*6)/8)
 
-#define KEYN 1024
-#define PAGESIZE (8192)
+#define KEYN 512
+#define PAGESIZE (4096)
 #define MUL 24
 #define LEVELN 5
-#define INPUTSIZE (1024*128)
+#define INPUTSIZE (1024*256)
 #define BUSYPOINT 0.7
 #define THREADQN 1024
-#define THREADNUM 10
+#define THREADNUM 1
 #define THREAD //-do thread
 //#define DEBUG_THREAD 
 //#define NOR //- not read data
@@ -29,9 +29,13 @@
 #define READTEST
 #define GETTEST
 
-#define CACHENUM 5
+#define CACHENUM 	2
+#define CACHETH     100
+#define WAITREQN	16
+#define WAITMETAN	128
 
-#define SNODE_SIZE (8192)
+
+#define SNODE_SIZE (4096)
 //#define SKIP_BLOCK ((4096+sizeof(int)*3)*1000)//(snode data+ meta)* # of snode
 //#define SKIP_META (sizeof(uint64_t)*2*1024)//snode meta * # of snode + size of skiplist
 
@@ -50,10 +54,12 @@
 #define MP(t) donothing((t))
 #define MC(t) donothing((t))
 #endif
+
+#ifndef CPP
 #ifndef BOOL
 #define BOOL
-#ifndef NOHOST
 typedef enum{false,true} bool;
 #endif
 #endif
+
 #endif

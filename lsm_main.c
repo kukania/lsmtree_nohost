@@ -3,8 +3,9 @@
 #include"lsm_cache.h"
 #include"utils.h"
 #include"threading.h"
-#ifndef NDMA
+#ifdef ENABLE_FTL
 #include"libmemio.h"
+extern memio* mio;
 #endif
 #include<sys/types.h>
 #include<sys/stat.h>
@@ -30,14 +31,16 @@ extern MeasureTime find;
 
 
 extern pthread_mutex_t endR;
-extern memio* mio;
 extern timeval max_time;
 extern int big_time_check;
 extern timeval max_time1,adding;
 extern int big_time_check1;
-extern int endcheck;
 extern int meta_read_data;
 
+extern int pros_hit;
+extern int pros_hit2;
+extern int cache_hit;
+extern int mem_hit;
 extern lsmtree *LSM;
 KEYT *keys;
 int cnnt=0;
@@ -52,9 +55,8 @@ int main(){
 	measure_start(&mt);
 	keys=(KEYT*)malloc(sizeof(KEYT)*INPUTSIZE);
 	for(int i=0; i<INPUTSIZE; i++){
-		keys[i]=rand()%INPUTSIZE+1;
+		keys[i]=rand()%INT_MAX+1;
 	}
-	srand(1);
 	int cnt=1;
 	for(int i=1; i<=INPUTSIZE; i++){
 		//printf("%d\n",i);
@@ -67,7 +69,7 @@ int main(){
 			key=i;
 		}
 			req->key=key;
-#ifndef NDMA
+#ifdef ENABLE_LIBFTL
 		req->dmaTag=memio_alloc_dma(req->type,&req->value);
 #else
 		req->value=(char*)malloc(PAGESIZE);
@@ -80,20 +82,14 @@ int main(){
 	threadset_gc_wait(&processor);
 	measure_end(&mt,"write_wait");
 
-	wt=(MeasureTime*)malloc(sizeof(MeasureTime));
-	at=(MeasureTime*)malloc(sizeof(MeasureTime));
-	measure_init(wt);
-	measure_init(at);
-	//sleep(1);
 	printf("read!\n");
 	measure_start(&mt);
-	srand(1);
 	//printf("??");
 	for(int i=1; i<=INPUTSIZE; i++){
 		req=(req_t*)malloc(sizeof(req_t));
 		req->type=2;
 		//if(i%1024==0)
-		//	printf("%d throw\n",i);
+			//printf("%d throw\n",i);
 		if(SEQUENCE==0){
 			key=keys[i-1];
 		}
@@ -102,7 +98,7 @@ int main(){
 		}
 		req->key=key;
 		key=i;
-#ifndef NDMA
+#ifdef ENABLE_LIBFTL
 		//printf("main_alloc!\n");
 		req->dmaTag=memio_alloc_dma(req->type,&req->value);
 #else
@@ -111,12 +107,11 @@ int main(){
 		lr_make_req(req);
 	}
 	//printf("throw all read req!\n");
-	//threadset_read_wait(&processor);
-	while(endcheck!=INPUTSIZE){}
+	threadset_read_wait(&processor);
 	measure_end(&mt,"read_end");
 	printf("meta_read_data:%d\n",meta_read_data);
 	//measure_end(&mt,"read_end");
-//	printf("mem:%.6f\n",(float)mem.adding.tv_usec/1000000);
+	printf("mem:%.6f\n",(float)mem.adding.tv_usec/1000000);
 //	printf("last:%.6f\n",(float)last.adding.tv_usec/1000000);
 //	printf("buf:%.6f\n",(float)buf.adding.tv_usec/1000000);
 	printf("bp:%.6f\n",(float)bp.adding.tv_usec/1000000);
@@ -134,10 +129,15 @@ int main(){
 	printf("max:%ld sec and %.6f\n",max_time.tv_sec,(float)max_time.tv_usec/1000000);
 	printf("over time (%d): %d\n",INPUTSIZE,big_time_check);*/
 	//lr_inter_free();
+	/*
 	for(int i=0; i<LEVELN; i++){
 		printf("\n--------------[level %d]-------\n",i);
 		level_print(LSM->buf.disk[i]);
-	}
+	}*/
 	threadset_debug_print(&processor);
 	cache_summary(&processor.mycache);
+	printf("pros hit 1 : %d\n",pros_hit);
+	printf("pros hit 2 : %d\n",pros_hit2);
+	printf("mem hit :%d\n",mem_hit);
+	printf("cache_hit : %d\n",cache_hit);
 }

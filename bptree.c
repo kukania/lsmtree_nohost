@@ -94,7 +94,7 @@ Entry **level_range_find(level *lev, KEYT start, KEYT end){
 	Entry *temp=startN->children[0].entry;
 	if(temp==NULL) return NULL;
 	Entry **res=(Entry **)malloc(sizeof(Entry *)*(lev->m_size+1));
-	printf("nsize:%d msize:%d key:%u~%u\n",lev->size,lev->m_size,start,end);
+//	printf("nsize:%d msize:%d key:%u~%u\n",lev->size,lev->m_size,start,end);
 	int idx=0;
 	int cnt=1;
 	bool startingFlag=false;

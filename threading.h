@@ -10,22 +10,26 @@
 #include<pthread.h>
 #include<semaphore.h>
 typedef struct threadset threadset;
+typedef struct{
+	int start;
+	int end;
+}range;
 typedef struct threading{
 	pthread_t id;
-	pthread_mutex_t activated_check;
-	pthread_cond_t activated_cond;
 	pthread_mutex_t terminate;
 	int number;
 	sktable *buf_data;
 	int dmatag;
 	int level;
-	bool isactivated;
 	bool terminateflag;
 
 	int cache_hit;
 	int header_read;
 	MeasureTime waiting;
 	threadset *master;
+
+	lsmtree_req_t *pre_req[WAITREQN];
+	Entry *entry[WAITREQN];
 }threading;
 
 typedef struct threadset{
@@ -43,7 +47,7 @@ typedef struct threadset{
 	threading threads[THREADNUM];
 	threading gc_thread;
 	spsc_bounded_queue_t<void *>* req_q;
-	mpmc_bounded_queue_t<void *> *read_q;
+	spsc_bounded_queue_t<void *> *read_q;
 	spsc_bounded_queue_t<void *>* gc_q;
 	//queue *gc_q;
 	int activatednum;
