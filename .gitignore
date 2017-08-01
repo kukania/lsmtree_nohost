@@ -1,4 +1,4 @@
 *.o
 *.a
 LIBLSM
-data/
+data/*.skip
