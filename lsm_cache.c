@@ -1,8 +1,12 @@
+#include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
 #include"utils.h"
-#include"libmemio.h"
 #include "lsm_cache.h"
+
+#ifdef ENABLE_LIBFTL
+#include"libmemio.h"
+#endif
 
 void cache_init(lsm_cache *input){
 	for(int i=0; i<LEVELN; i++){
@@ -41,7 +45,11 @@ void cache_input(lsm_cache* input,int l,sktable* sk,int tag){
 		free(victim->content);
 	}
 	else{
+#ifdef ENABLE_LIBFTL
 		memio_free_dma(2,victim->dmatag);
+#else
+		free(victim->content);
+#endif
 	}
 	input->all_hit+=victim->hit;
 	victim->hit=0;
@@ -60,6 +68,7 @@ keyset* cache_level_find(lsm_cache* input,int l,KEYT k){
 		if(res!=NULL) {
 			input->caches[l][j].check_bit=input->time_bit++;
 			input->caches[l][j].hit++;
+#ifdef ENABLE_LIBFTL
 			if(!input->caches[l][j].cpyflag &&input->caches[l][j].hit>=CACHETH){
 				input->caches[l][j].cpyflag=true;
 				sktable *temp_sk=input->caches[l][j].content;
@@ -68,6 +77,7 @@ keyset* cache_level_find(lsm_cache* input,int l,KEYT k){
 				printf("copy!\n");
 				memio_free_dma(2,input->caches[l][j].dmatag);
 			}
+#endif
 			return res;
 		}
 	}

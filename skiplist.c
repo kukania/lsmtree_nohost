@@ -145,7 +145,7 @@ void skiplist_dump(skiplist *list){
 		printf("level dump - %d\n",i);
 		snode *temp=list->header->list[i];
 		while(temp!=list->header){
-			printf("%llu ",temp->key);
+			printf("%u ",temp->key);
 			temp=temp->list[i];
 		}
 		printf("\n\n");
@@ -192,7 +192,7 @@ sktable *skiplist_meta_read_c(KEYT pbn, int fd,int seq,lsmtree_gc_req_t *req){
 	lsmtree_gc_req_t *temp=(lsmtree_gc_req_t*)malloc(sizeof(lsmtree_gc_req_t));
 	temp->type=LR_DR_T;
 	temp->req=NULL;
-#ifdef NDMA
+#ifndef ENABLE_LIBFTL 
 	temp->keys=(keyset*)malloc(PAGESIZE);
 #else	
 	char *temp_p;
@@ -226,7 +226,7 @@ sktable *skiplist_meta_read_n(KEYT pbn, int fd,int seq,lsmtree_req_t *req){
 	lsmtree_req_t *temp=(lsmtree_req_t*)malloc(sizeof(lsmtree_req_t));
 	temp->type=LR_DR_T;
 	temp->req=NULL;
-#ifdef NDMA
+#ifndef ENABLE_LIBFTL
 	temp->keys=(keyset*)malloc(PAGESIZE);
 #else	
 	char *temp_p;
@@ -330,7 +330,7 @@ KEYT skiplist_meta_write(skiplist *data,int fd, lsmtree_gc_req_t *req){
 		lsmtree_gc_req_t *temp_req=(lsmtree_gc_req_t*)malloc(sizeof(lsmtree_gc_req_t));
 		//printf("-----------------------%p\n",temp_req);
 		temp_req->type=LR_DW_T;
-#ifdef NDMA
+#ifndef ENABLE_LIBFTL
 		temp_req->keys=(keyset*)malloc(PAGESIZE);
 #else	
 		char *temp_p;	

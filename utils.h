@@ -13,7 +13,7 @@
 #define PAGESIZE (8192)
 #define MUL 24
 #define LEVELN 5
-#define INPUTSIZE (1024*128)
+#define INPUTSIZE (1024*512)
 #define BUSYPOINT 0.7
 #define THREADQN 1024
 #define THREADNUM 1
@@ -54,10 +54,12 @@
 #define MP(t) donothing((t))
 #define MC(t) donothing((t))
 #endif
+
+#ifndef CPP
 #ifndef BOOL
 #define BOOL
-#ifndef NOHOST
 typedef enum{false,true} bool;
 #endif
 #endif
+
 #endif

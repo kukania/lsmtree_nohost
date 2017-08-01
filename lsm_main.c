@@ -3,8 +3,9 @@
 #include"lsm_cache.h"
 #include"utils.h"
 #include"threading.h"
-#ifndef NDMA
+#ifdef ENABLE_FTL
 #include"libmemio.h"
+extern memio* mio;
 #endif
 #include<sys/types.h>
 #include<sys/stat.h>
@@ -30,7 +31,6 @@ extern MeasureTime find;
 
 
 extern pthread_mutex_t endR;
-extern memio* mio;
 extern timeval max_time;
 extern int big_time_check;
 extern timeval max_time1,adding;
@@ -69,7 +69,7 @@ int main(){
 			key=i;
 		}
 			req->key=key;
-#ifndef NDMA
+#ifdef ENABLE_LIBFTL
 		req->dmaTag=memio_alloc_dma(req->type,&req->value);
 #else
 		req->value=(char*)malloc(PAGESIZE);
@@ -98,7 +98,7 @@ int main(){
 		}
 		req->key=key;
 		key=i;
-#ifndef NDMA
+#ifdef ENABLE_LIBFTL
 		//printf("main_alloc!\n");
 		req->dmaTag=memio_alloc_dma(req->type,&req->value);
 #else

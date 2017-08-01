@@ -167,7 +167,11 @@ int thread_level_get(lsmtree *LSM,KEYT key, threading *input, char *ret, lsmtree
 		cache_input(&input->master->mycache,l,sk,req->dmatag);
 		return 1;
 	}
+#ifdef ENABLE_LIBFTL
 	memio_free_dma(2,req->dmatag);
+#else
+	free(req->keys);
+#endif
 	//printf("freed!\n");
 	bool metaflag;
 	bool returnflag=0;

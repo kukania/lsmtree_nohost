@@ -36,7 +36,8 @@
 
 #include <atomic>
 #include <assert.h>
-
+#include <iostream>
+#include <type_traits>
 template<typename T>
 class spsc_bounded_queue_t
 {
