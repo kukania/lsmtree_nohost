@@ -7,7 +7,7 @@ CFLAGS	+=\
 			-DCPP\
 			-Wwrite-strings\
 
-INCLUDS := 	-I$(PWD) \
+INCLUDS :=	-I$(PWD) \
 
 LIBS 	:=\
 			-lpthread\
@@ -25,7 +25,7 @@ OBJS	:=\
 			$(SRCS:.c=.o) $(SRCS:.cpp=.o)
 
 all		: 	LIBLSM
-
+			
 LIBLSM	:	liblsm.a lsm_main.c
 			$(CC) $(INCLUDES) $(CFLAGS) -o $@ lsm_main.c liblsm.a $(LIBS)
 			@$(RM) *.o
