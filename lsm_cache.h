@@ -9,9 +9,11 @@ typedef struct {
 	uint64_t check_bit;
 	int dmatag;
 	int hit;
+	bool cpyflag;
 }cache;
 typedef struct{
 	cache caches[LEVELN][CACHENUM];
+	int all_hit;
 	uint64_t time_bit;
 }lsm_cache;
 

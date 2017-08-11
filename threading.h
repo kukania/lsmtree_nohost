@@ -16,21 +16,19 @@ typedef struct{
 }range;
 typedef struct threading{
 	pthread_t id;
-	pthread_mutex_t activated_check;
-	pthread_cond_t activated_cond;
 	pthread_mutex_t terminate;
 	int number;
 	sktable *buf_data;
 	int dmatag;
 	int level;
-	bool isactivated;
 	bool terminateflag;
 
 	int cache_hit;
 	int header_read;
 	MeasureTime waiting;
 	threadset *master;
-
+	
+	int flag;
 	lsmtree_req_t *pre_req[WAITREQN];
 	Entry *entry[WAITREQN];
 }threading;

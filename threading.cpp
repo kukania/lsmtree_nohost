@@ -26,12 +26,14 @@ MeasureTime gt;
 MeasureTime *wt;
 MeasureTime *at;
 MeasureTime rt;
+
+int gc_end_check;
+int read_end_check;
+int write_end_check;
+int temp_check;
 void threading_init(threading *input){
-	pthread_mutex_init(&input->activated_check,NULL);
-	pthread_cond_init(&input->activated_cond,NULL);
 	pthread_mutex_init(&input->terminate,NULL);
 
-	input->isactivated=false;
 	input->terminateflag=false;
 	input->buf_data=NULL;
 
@@ -43,15 +45,17 @@ void threading_init(threading *input){
 		input->pre_req[i]=NULL;
 		input->entry[i]=NULL;
 	}
+	input->flag=0;
 }
 
 void threading_clear(threading *input){
-	pthread_mutex_destroy(&input->activated_check);
 	pthread_mutex_destroy(&input->terminate);
 	if(input->buf_data!=NULL)
 		free(input->buf_data);
 }
 void threadset_init(threadset* input){
+	gc_end_check=read_end_check=write_end_check=0;
+
 	measure_init(&gt);
 	measure_init(&rt);
 	pthread_mutex_init(&input->req_lock,NULL);
@@ -79,7 +83,6 @@ void threadset_init(threadset* input){
 	input->counter=0;
 	input->errcnt=0;
 #endif
-	input->activatednum=input->max_act=0;
 	input->req_q=new spsc_bounded_queue_t<void*>(THREADQN);
 	input->read_q=new spsc_bounded_queue_t<void*>(THREADQN);
 	input->gc_q=new spsc_bounded_queue_t<void*>(2);
@@ -118,12 +121,7 @@ void* thread_gc_main(void *input){
 	threading *myth=&master->gc_thread;
 	while(1){
 		lsmtree_gc_req_t *lsm_req;
-		void *req_data;
-		pthread_mutex_lock(&myth->activated_check);
-		myth->isactivated=false;
-		pthread_cond_broadcast(&myth->activated_cond);
-		pthread_mutex_unlock(&myth->activated_check);	
-
+		void *req_data;	
 		while(!master->gc_q->dequeue(&req_data)){}
 		lsm_req=(lsmtree_gc_req_t*)req_data;
 		if(lsm_req==NULL){
@@ -141,10 +139,6 @@ void* thread_gc_main(void *input){
 			break;
 		}
 		else{
-			pthread_mutex_lock(&myth->activated_check);
-			myth->isactivated=true;
-			pthread_cond_broadcast(&myth->activated_cond);
-			pthread_mutex_unlock(&myth->activated_check);
 
 			pthread_mutex_unlock(&myth->terminate);
 			//printf("[%d]doing!!",number);
@@ -155,30 +149,51 @@ void* thread_gc_main(void *input){
 			KEYT *key;
 			Entry *result_entry;
 			bool flag=false;
-			for(int i=LEVELN-1; i>=0; i--){
-				if(LSM->buf.disk[i]==NULL)
-					break;
-				if(LSM->buf.disk[i]->size>=LSM->buf.disk[i]->m_size){
-					flag=true;
-					src=LSM->buf.disk[i];
-					des=LSM->buf.disk[i+1];
-					lsm_req->now_number=0;
-					lsm_req->target_number=0;
-					pthread_mutex_init(&lsm_req->meta_lock,NULL);
-					compaction(LSM,src,des,NULL,lsm_req);
+			if(lsm_req->type==LR_FLUSH_T){
+				for(int i=LEVELN-1; i>=0; i--){
+					if(LSM->buf.disk[i]==NULL)
+						break;
+					if(LSM->buf.disk[i]->size>=LSM->buf.disk[i]->m_size){
+						flag=true;
+						src=LSM->buf.disk[i];
+						des=LSM->buf.disk[i+1];
+						lsm_req->now_number=0;
+						lsm_req->target_number=0;
+						lsm_req->flag=i+2;
+						pthread_mutex_init(&lsm_req->meta_lock,NULL);
+						compaction(LSM,src,des,NULL,lsm_req);
+					}
 				}
+				if(!flag){
+					pthread_mutex_init(&lsm_req->meta_lock,NULL);
+				}
+				data=(skiplist*)lsm_req->params[2];
+				lsm_req->now_number=0;
+				lsm_req->target_number=0;
+				lsm_req->flag=1;
+				result_entry=make_entry(data->start,data->end,write_data(LSM,data,lsm_req));
+				skiplist_meta_free(data);
+				compaction(LSM,NULL,LSM->buf.disk[0],result_entry,lsm_req);
+				lsm_req->end_req(lsm_req);
+				//printf("[%d]done-----\n",number++);
 			}
-			if(!flag){
-				pthread_mutex_init(&lsm_req->meta_lock,NULL);
+			else{
+				for(int i=LEVELN-1; i>=0; i--){
+					if(LSM->buf.disk[i]->size==0)
+						continue;
+					for(int j=i-1; j>=0; j--){
+						if(LSM->buf.disk[j]->size==0)
+							continue;
+						src=LSM->buf.disk[i];
+						des=LSM->buf.disk[j];
+						pthread_mutex_init(&lsm_req->meta_lock,NULL);
+						compaction(LSM,src,des,NULL,lsm_req);
+						break;
+					}
+					break;
+				}
+				lsm_req->end_req(lsm_req);
 			}
-			data=(skiplist*)lsm_req->params[2];
-			lsm_req->now_number=0;
-			lsm_req->target_number=0;
-			result_entry=make_entry(data->start,data->end,write_data(LSM,data,lsm_req));
-			skiplist_meta_free(data);
-			compaction(LSM,NULL,LSM->buf.disk[0],result_entry,lsm_req);
-			lsm_req->end_req(lsm_req);
-			//printf("[%d]done-----\n",number++);
 		}
 	}
 	return NULL;
@@ -195,13 +210,16 @@ void* thread_main(void *input){
 	}
 	threading *myth=&master->threads[number];
 	int nullvalue=0;
-	bool flag=false;
+	bool header_flag=false;
 	while(1){
 		lsmtree_req_t *lsm_req;
 		void *data=NULL;
-		pthread_mutex_lock(&myth->activated_check);
-		myth->isactivated=false;
-		pthread_mutex_unlock(&myth->activated_check);
+		/*
+		   if(header_flag){
+		   while(!master->read_q->dequeue(&data)){}
+		   header_flag=false;
+		   }
+		   else{*/
 		while(1){
 			if(!master->read_q->dequeue(&data)){
 				if(!master->req_q->dequeue(&data)){
@@ -210,7 +228,8 @@ void* thread_main(void *input){
 				break;
 			}
 			break;
-		}
+		}/*
+			}*/
 		lsm_req=(lsmtree_req_t*)data;
 		pthread_mutex_lock(&myth->terminate);
 		if(myth->terminateflag){
@@ -218,13 +237,10 @@ void* thread_main(void *input){
 			break;
 		}
 		else{
-			pthread_mutex_lock(&myth->activated_check);
-			myth->isactivated=true;
-			pthread_mutex_unlock(&myth->activated_check);
 
 			pthread_mutex_unlock(&myth->terminate);
-
 			KEYT *key=(KEYT*)lsm_req->params[1];
+			myth->flag=1;
 			char *value;		
 			lsmtree *LSM=(lsmtree*)lsm_req->params[3];
 			int test_num;
@@ -233,23 +249,30 @@ void* thread_main(void *input){
 				case DISK_READ_T:
 					value=(char*)lsm_req->params[2];
 					test_num=thread_level_get(LSM,*key,myth,value,lsm_req,lsm_req->flag);
-					if(test_num==0){
-						printf("[%u]not_found\n",*key);
-						lsm_req->end_req(lsm_req);
+					if(test_num<=0){
+						if(lsm_req->seq_number==200)
+							printf("fuck that shit!\n");
+						//printf("[%u]not_found in level : [%llu: %d : %llu]\n",*key,lsm_req->now_number,test_num,lsm_req->seq_number);
+						lsm_req->seq_number=200;
+						test_num=thread_get(LSM,*key,myth,value,lsm_req);
+						//lsm_req->end_req(lsm_req);
 					}
 					break;
 				case LR_READ_T:
 					value=(char*)lsm_req->params[2];
 					pthread_mutex_init(&lsm_req->meta_lock,NULL);
-					MS(&bp);
+					//	MS(&bp);
 					test_num=thread_get(LSM,*key,myth,value,lsm_req);
-					MA(&bp);
+					//	MA(&bp);
 					if(test_num==0){
 						printf("[%u]not_found\n",*key);
+						sleep(1);
 						lsm_req->end_req(lsm_req);
 					}
 					if(test_num==2)
 						lsm_req->end_req(lsm_req);
+					if(test_num==4)
+						header_flag=true;
 					break;
 				case LR_WRITE_T:
 					if(is_flush_needed(LSM)){
@@ -257,10 +280,20 @@ void* thread_main(void *input){
 					}
 					value=(char*)lsm_req->params[2];
 					put(LSM,*key,value,lsm_req);
+					temp_check++;
+					break;
+				case LR_DELETE_T:
+					if(is_flush_needed(LSM)){
+						lr_gc_make_req(0);
+					}
+					value=NULL;
+					put(LSM,*key,NULL,lsm_req);
+					temp_check++;
 					break;
 				default:
 					break;
 			}
+			myth->flag=0;
 		}
 	}
 	return NULL;
@@ -291,63 +324,13 @@ void threadset_gc_assign(threadset* input ,lsmtree_gc_req_t *req){
 	while(!input->gc_q->enqueue(req)){}
 }
 void threadset_gc_wait(threadset *input){
-	bool emptyflag=false;
-	while(1){
-		pthread_mutex_lock(&input->gc_thread.activated_check);
-		if(input->gc_thread.isactivated){
-			pthread_cond_wait(&input->gc_thread.activated_cond,&input->gc_thread.activated_check);
-		}
-		else{
-			if(emptyflag){
-				pthread_mutex_unlock(&input->gc_thread.activated_check);
-				return;
-			}
-		}
-		pthread_mutex_unlock(&input->gc_thread.activated_check);
-		if(input->gc_q->isempty()){
-			emptyflag=true;
-		}
-	}
+	while(gc_end_check){}
 }
 void threadset_read_wait(threadset *input){
-	bool emptyflag=false;
-	int i=0;
-	while(1){
-		pthread_mutex_lock(&input->threads[i].activated_check);
-		if(input->threads[i].isactivated){
-			pthread_mutex_unlock(&input->threads[i].activated_check);
-		}
-		else{
-			pthread_mutex_unlock(&input->threads[i].activated_check);
-			if(emptyflag){
-				i++;
-				if(i==THREADNUM)
-					return;
-			}
-		}
-		if(input->read_q->isempty()){
-			emptyflag=true;
-		}
-	}
+	while(read_end_check!=temp_check){}
 }
 void threadset_request_wait(threadset *input){
-	bool emptyflag=false;
-	while(1){
-		//pthread_mutex_lock(&input->threads[0].activated_check);
-		if(input->threads[0].isactivated){
-			//pthread_mutex_unlock(&input->threads[0].activated_check);
-			continue;
-		}
-		else{
-			if(emptyflag){
-//				pthread_mutex_unlock(&input->threads[0].activated_check);
-				return;
-			}
-		}
-//		pthread_mutex_unlock(&input->threads[0].activated_check);
-		if(input->req_q->isempty()){
-			emptyflag=true;
-		}
+	while(temp_check!=INPUTSIZE){
 	}
 }
 void threadset_end(threadset *input){

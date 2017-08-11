@@ -5,9 +5,10 @@
 #include<pthread.h>
 #include"skiplist.h"
 #include"utils.h"
-#include"lockfreeq.h"
+#include"bptree.h"
+//#include"lockfreeq.h"
 #ifndef LIBLSM
-#include"request.h"
+//#include"request.h"
 #endif
 /**request type***/
 #define LR_READ_T 	32
@@ -16,10 +17,16 @@
 #define LR_WRITE_T 	8
 #define LR_COMP_T	4
 #define LR_FLUSH_T	16
+#define LR_GC_T		17
 #define LR_DW_T		1
 #define LR_DR_T		3
 #define LR_DDR_T	0
 #define LR_DDW_T    2
+#define LR_DELETE_T 64
+#define LR_DELETE_PR 65
+#define LR_DELETE_PW 66
+#define LR_DELETE_R 67
+#define LR_DELETE_W 68
 /***/
 typedef struct sktable sktable;
 typedef struct skiplist skiplist;
@@ -52,6 +59,7 @@ typedef struct lsmtree_gc_req_t{
 	int dmatag;
 	sktable *compt_headers;
 	skiplist * skip_data;
+	char *data;
 
 	MeasureTime mt;
 }lsmtree_gc_req_t;
@@ -72,7 +80,8 @@ typedef struct lsmtree_req_t{
 	struct lsmtree_req_t *parent;
 	int dmatag;
 	struct lsmtree_gc_req_t *gc_parent;
-	char *dummy;
+	Entry *dummy;
+	char *data;
 
 	MeasureTime mt;
 }lsmtree_req_t;

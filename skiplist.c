@@ -12,6 +12,8 @@
 #include"skiplist.h"
 #include"LR_inter.h"
 #include"threading.h"
+#include"delete_set.h"
+#include"ppa.h"
 #ifdef ENABLE_LIBFTL
 #include "libmemio.h"
 extern memio_t* mio;
@@ -20,14 +22,16 @@ extern threadset processor;
 extern MeasureTime mt;
 extern pthread_mutex_t pl;
 extern pthread_mutex_t endR;
+extern delete_set* dset;
+extern uint64_t *oob;
 #ifdef THREAD
 pthread_mutex_t dfd_lock;
 #endif
-KEYT ppa=0;
 snode *snode_init(snode *node){
 	node->value=(char*)malloc(PAGESIZE);
 	for(int i=0; i<MAX_L; i++)
 		node->list[i]=NULL;
+	node->vflag=true;
 	return node;
 }
 
@@ -39,6 +43,7 @@ skiplist *skiplist_init(skiplist *point){
 	point->header->list=(snode**)malloc(sizeof(snode)*(MAX_L+1));
 	for(int i=0; i<MAX_L; i++) point->header->list[i]=point->header;
 	point->header->key=-1;
+	point->bitset=NULL;
 	return point;
 }
 snode *skiplist_pop(skiplist *list){
@@ -96,6 +101,35 @@ static int getLevel(){
 	}
 	return level;
 }
+
+int skiplist_delete(skiplist* list, KEYT key){
+	if(list->size==0)
+		return -1;
+	snode *update[MAX_L+1];
+	snode *x=list->header;
+	for(int i=list->level; i>=1; i--){
+		while(x->list[i]->key<key)
+			x=x->list[i];
+		update[i]=x;
+	}
+	x=x->list[1];
+
+	if(x->key!=key)
+		return -2; 
+
+	for(int i=x->level; i>=1; i--){
+		update[i]->list[i]=x->list[i];
+		if(update[i]==update[i]->list[i])
+			list->level--;
+	}
+
+	//free(x->value);
+	free(x->list);
+	free(x);
+	list->size--;
+	return 0;
+}
+
 snode *skiplist_insert(skiplist *list,KEYT key, char *value, lsmtree_req_t* req,bool flag){
 	snode *update[MAX_L+1];
 	snode *x=list->header;
@@ -109,7 +143,16 @@ snode *skiplist_insert(skiplist *list,KEYT key, char *value, lsmtree_req_t* req,
 	x=x->list[1];
 
 	if(key==x->key){
-		//printf("??\n");
+		if(x->vflag && !flag){
+			delete_ppa(dset,x->ppa);
+			if(x->req->req!=NULL){
+				memio_free_dma(1,x->req->req->dmaTag);	
+			}
+			skiplist_delete(list,key);
+			return NULL;
+		}
+		delete_ppa(dset,x->ppa);
+		x->vflag=flag;
 		x->value=value;
 		x->req=req;
 		return x;
@@ -124,6 +167,7 @@ snode *skiplist_insert(skiplist *list,KEYT key, char *value, lsmtree_req_t* req,
 		}
 
 		x=(snode*)malloc(sizeof(snode));
+		x->vflag=flag;
 		x->list=(snode**)malloc(sizeof(snode*)*(level+1));
 		x->key=key;
 		if(value !=NULL){
@@ -199,7 +243,7 @@ sktable *skiplist_meta_read_c(KEYT pbn, int fd,int seq,lsmtree_gc_req_t *req){
 	temp->dmatag=memio_alloc_dma(2,&temp_p);
 	temp->keys=(keyset*)temp_p;
 #endif
-    temp->seq_number=seq;
+	temp->seq_number=seq;
 	temp->end_req=lr_gc_end_req;
 	temp->parent=req;
 
@@ -234,7 +278,7 @@ sktable *skiplist_meta_read_n(KEYT pbn, int fd,int seq,lsmtree_req_t *req){
 	//printf("meta! [%d]\n",temp->dmatag);
 	temp->keys=(keyset*)temp_p;
 #endif
-    temp->seq_number=seq;
+	temp->seq_number=seq;
 	temp->end_req=req->end_req;
 	temp->parent=req;
 
@@ -269,7 +313,7 @@ keyset *skiplist_keyset_find(sktable *t, KEYT key){
 	KEYT start=0,end=KEYN;
 	KEYT mid=(start+end)/2;
 	if(t->meta[0].key > key)
-		 return NULL;
+		return NULL;
 	if(t->meta[KEYN-1].key < key)
 		return NULL;
 	while(1){
@@ -292,10 +336,32 @@ keyset *skiplist_keyset_find(sktable *t, KEYT key){
 		}
 	}
 }
-
+bool skiplist_keyset_read_c(keyset *k,char *res, int fd, lsmtree_gc_req_t *req){
+	if(k==NULL)
+		return false;
+	lsmtree_gc_req_t *temp=(lsmtree_gc_req_t*)malloc(sizeof(lsmtree_gc_req_t));
+	temp->type=LR_DDR_T;
+	temp->end_req=req->end_req;
+	temp->params[2]=(void*)res;
+	temp->parent=req;
+	char *temp_p;
+	temp->dmatag=memio_alloc_dma(2,&temp_p);
+	temp->data=temp_p;
+#ifndef ENABLE_LIBFTL
+	pthread_mutex_lock(&dfd_lock);
+	if(lseek64(fd,((off64_t)PAGESIZE)*(k->ppa),SEEK_SET)==-1)
+		printf("lseek error in meta read!\n");
+	read(fd,res,PAGESIZE);
+	pthread_mutex_unlock(&dfd_lock);
+	temp->end_req(temp);
+#else
+	temp->isgc=true;
+	memio_read(mio,k->ppa,(uint64_t)(PAGESIZE),(uint8_t*)res,1,temp,temp->dmatag);
+#endif
+}
 bool skiplist_keyset_read(keyset* k,char *res,int fd,lsmtree_req_t *req){
 	if(k==NULL)
-		 return false;
+		return false;
 	lsmtree_req_t *temp=(lsmtree_req_t*)malloc(sizeof(lsmtree_req_t));
 
 	temp->type=LR_DDR_T;
@@ -326,6 +392,7 @@ KEYT skiplist_meta_write(skiplist *data,int fd, lsmtree_gc_req_t *req){
 	int now=0;
 	int i=0;
 	snode *temp=data->header->list[1];
+	KEYT temp_pp;
 	for(int j=0;j<1; j++){
 		lsmtree_gc_req_t *temp_req=(lsmtree_gc_req_t*)malloc(sizeof(lsmtree_gc_req_t));
 		//printf("-----------------------%p\n",temp_req);
@@ -339,9 +406,15 @@ KEYT skiplist_meta_write(skiplist *data,int fd, lsmtree_gc_req_t *req){
 #endif
 		//temp_req->parent=req;
 		temp_req->end_req=lr_gc_end_req;
+		data->bitset=(uint8_t*)malloc(sizeof(uint8_t)*(KEYN/8));
 		for(int i=0; i<KEYN; i++){
+			int bit_n=i/8;
+			int offset=i%8;
 			temp_req->keys[i].key=temp->key;
 			temp_req->keys[i].ppa=temp->ppa;
+			if(temp->vflag){
+				data->bitset[bit_n] |= (1<<offset);	
+			}
 			temp=temp->list[1];
 		}
 #ifndef ENABLE_LIBFTL
@@ -354,10 +427,18 @@ KEYT skiplist_meta_write(skiplist *data,int fd, lsmtree_gc_req_t *req){
 #else	
 		temp_req->seq_number=seq_number++;
 		temp_req->isgc=true;
-		memio_write(mio,ppa++,(uint64_t)(PAGESIZE),(uint8_t*)temp_req->keys,1,(void*)temp_req,temp_req->dmatag);
+		//oob
+		uint64_t temp_oob=0;
+		KEYSET(temp_oob,temp_req->keys[i].key);
+		LEVELSET(temp_oob,req->flag);
+		FLAGSET(temp_oob,0);
+		temp_pp=getPPA();
+		oob[temp_pp]=temp_oob;
+		memio_write(mio,temp_pp,(uint64_t)(PAGESIZE),(uint8_t*)temp_req->keys,1,(void*)temp_req,temp_req->dmatag);
+
 #endif
 	}
-	return ppa-1;
+	return temp_pp;
 }
 KEYT skiplist_data_write(skiplist *data,int fd,lsmtree_gc_req_t * req){
 	lsmtree_req_t *child_req;
@@ -366,29 +447,55 @@ KEYT skiplist_data_write(skiplist *data,int fd,lsmtree_gc_req_t * req){
 	int t_cnt=0;
 	//MS(&mt);
 	while(temp!=data->header){
-	    child_req=temp->req;
+		child_req=temp->req;
 		child_req->type=LR_DDW_T;
 		child_req->end_req=lr_end_req;
-	//	child_req->parent=(lsmtree_req_t*)req;
-		temp->ppa=ppa;
+		//	child_req->parent=(lsmtree_req_t*)req;
+		if(temp->vflag){
+			KEYT temp_p=getPPA();
+			temp->ppa=temp_p;
 #ifndef ENABLE_LIBFTL
-		pthread_mutex_lock(&dfd_lock);
-		if(lseek64(fd,((off64_t)PAGESIZE)*(ppa),SEEK_SET)==-1)
-			printf("lseek error in meta read!\n");
+			pthread_mutex_lock(&dfd_lock);
+			if(lseek64(fd,((off64_t)PAGESIZE)*(temp_p),SEEK_SET)==-1)
+				printf("lseek error in meta read!\n");
 
-		write(fd,temp->value,PAGESIZE);
-		pthread_mutex_unlock(&dfd_lock);
-		child_req->end_req(child_req);
+			write(fd,temp->value,PAGESIZE);
+			pthread_mutex_unlock(&dfd_lock);
+			child_req->end_req(child_req);
 #else
-		child_req->seq_number=seq_number++;
-		child_req->isgc=false;
-		memio_write(mio,ppa,(uint64_t)(PAGESIZE),(uint8_t*)temp->value,1,(void*)child_req,child_req->req->dmaTag);
+			child_req->seq_number=seq_number++;
+			child_req->isgc=false;
+			uint64_t temp_oob=0;
+			KEYSET(temp_oob,temp->key);
+			LEVELSET(temp_oob,req->flag);
+			FLAGSET(temp_oob,1);
+			oob[temp_p]=temp_oob;
+			memio_write(mio,temp_p,(uint64_t)(PAGESIZE),(uint8_t*)temp->value,1,(void*)child_req,child_req->req->dmaTag);
 #endif
+		}
 		temp=temp->list[1];
-		ppa++;
 	}
 	//ME(&mt,"memio_write");
 	return 0;
+}
+void skiplist_sk_data_write(sktable *sk, int fd, lsmtree_gc_req_t *req){
+	for(int i=0; i<KEYN; i++){
+		lsmtree_gc_req_t *temp=(lsmtree_gc_req_t *)malloc(sizeof(lsmtree_gc_req_t));
+		char *temp_p;	
+		temp->dmatag=memio_alloc_dma(1,&temp_p);
+		memcpy(temp_p,&sk->value[i*PAGESIZE],PAGESIZE);
+		temp->req=NULL;
+		temp->type=LR_DDW_T;
+		delete_ppa(dset,sk->meta[i].ppa);
+		KEYT temp_pp=getPPA();
+		sk->meta[i].ppa=temp_pp;
+		uint64_t temp_oob=0;
+		KEYSET(temp_oob,sk->meta[i].key);
+		LEVELSET(temp_oob,req->flag);
+		FLAGSET(temp_oob,1);
+		oob[temp_pp]=temp_oob;
+		memio_write(mio,temp_pp,(uint64_t)PAGESIZE,(uint8_t*)temp_p,1,(void*)temp,temp->dmatag);
+	}
 }
 
 skiplist *skiplist_cut(skiplist *list,KEYT num){
@@ -410,7 +517,6 @@ skiplist *skiplist_cut(skiplist *list,KEYT num){
 	return res;
 }
 #ifdef DEBUG
-
 int main(){
 	skiplist * temp;
 

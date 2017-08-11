@@ -11,6 +11,7 @@ typedef struct snode{
 	KEYT ppa;
 	int level;
 	char *value;
+	bool vflag;
 	struct lsmtree_req_t *req;
 	struct snode **list;
 }snode;
@@ -20,6 +21,7 @@ typedef struct skiplist{
 	KEYT start,end;
 	uint64_t size;
 	snode *header;
+	uint8_t *bitset;
 }skiplist;
 
 typedef struct skIterator{
@@ -48,12 +50,14 @@ sktable *skiplist_meta_read_c(KEYT, int fd,int ,struct lsmtree_gc_req_t *);
 sktable *skiplist_data_read(sktable*,KEYT pbn, int fd);
 keyset* skiplist_keyset_find(sktable *,KEYT key);
 bool skiplist_keyset_read(keyset* ,char *,int fd,lsmtree_req_t *);
+bool skiplist_keyset_read_c(keyset* ,char *,int fd,lsmtree_gc_req_t *);
 void skiplist_sktable_free(sktable *);
 
 snode *skiplist_pop(skiplist *);
 KEYT skiplist_write(skiplist*,lsmtree_gc_req_t *,int hfd, int dfd);
 KEYT skiplist_meta_write(skiplist *, int fd,struct lsmtree_gc_req_t*);
 KEYT skiplist_data_write(skiplist *, int fd,struct lsmtree_gc_req_t*);
+void skiplist_sk_data_write(sktable *,int fd,struct lsmtree_gc_req_t*);
 skiplist* skiplist_cut(skiplist *,KEYT num);
 void skiplist_ex_value_free(skiplist *list);
 void skiplist_meta_free(skiplist *list);

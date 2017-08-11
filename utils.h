@@ -29,10 +29,14 @@
 #define READTEST
 #define GETTEST
 
-#define CACHENUM 	5
+#define CACHENUM 	2
+#define CACHETH     100
 #define WAITREQN	16
 #define WAITMETAN	128
 
+#define PAGENUM (4096)
+#define SEGNUM  (32*4) 
+#define MAXPAGE (32*4*4096) //1G=32*4096
 
 #define SNODE_SIZE (8192)
 //#define SKIP_BLOCK ((4096+sizeof(int)*3)*1000)//(snode data+ meta)* # of snode

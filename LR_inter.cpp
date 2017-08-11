@@ -2,6 +2,8 @@
 #include"lsmtree.h"
 #include"threading.h"
 #include"utils.h"
+#include"delete_set.h"
+#include"ppa.h"
 #include<pthread.h>
 #include<stdlib.h>
 #include<string.h>
@@ -10,6 +12,7 @@
 #include "libmemio.h"
 #endif
 lsmtree *LSM;
+delete_set *dset;
 threadset processor;
 MeasureTime mt;
 MeasureTime mas;
@@ -22,12 +25,22 @@ pthread_mutex_t endR;
 
 extern MeasureTime bp;
 extern MeasureTime buf;
+
+extern int gc_end_check;
+extern int read_end_check;
+extern int write_end_check;
+
+pthread_mutex_t gc_cnt_lock;
 int8_t lr_inter_init(){
 	LSM=(lsmtree*)malloc(sizeof(lsmtree));
+	dset=(delete_set*)malloc(sizeof(delete_set));
+	initPPA();
+	delete_init(dset);
 	threadset_init(&processor);
 	threadset_start(&processor);
 	pthread_mutex_init(&pl,NULL);
 	pthread_mutex_init(&endR,NULL);
+	pthread_mutex_init(&gc_cnt_lock,NULL);
 	measure_init(&mt);
 	measure_init(&mas);
 	measure_init(&mas2);
@@ -57,7 +70,15 @@ int8_t lr_gc_make_req(int8_t t_num){
 	pthread_mutex_unlock(&mem_lock);
 	
 	gc_req=(lsmtree_gc_req_t*)malloc(sizeof(lsmtree_gc_req_t));
-	gc_req->type=LR_FLUSH_T;
+	if(!t_num)
+		gc_req->type=LR_FLUSH_T;
+	else
+		gc_req->type=LR_GC_T;
+
+	pthread_mutex_lock(&gc_cnt_lock);
+	gc_end_check++;
+	pthread_mutex_unlock(&gc_cnt_lock);
+	gc_req->flag=0;
 	gc_req->params[1]=NULL;
 	gc_req->params[2]=(void*)LSM->sstable;
 	gc_req->params[3]=(void*)LSM;
@@ -76,7 +97,11 @@ int8_t lr_make_req(req_t *r){
 		switch(r->type_info->type){
 #endif
 			case 3:
+				write_end_check++;
+				th_req->type=LR_DELETE_T;
+				break;
 			case 1://set
+				write_end_check++;
 				th_req->type=LR_WRITE_T;
 				break;
 			case 2://get
@@ -99,6 +124,9 @@ int8_t lr_make_req(req_t *r){
 		th_req->params[3]=(void*)LSM;
 #endif
 		th_req->isgc=false;
+		th_req->seq_number=0;
+		if(th_req->type==LR_READ_T)
+			th_req->now_number=make_cnt++;
 		/*
 		if(th_req->type==LR_WRITE_T)
 			MS(&mas2);*/
@@ -123,10 +151,25 @@ int8_t lr_end_req(lsmtree_req_t *r){
 	char *value;
 	void *data=NULL;
 	switch(r->type){
+		case LR_DELETE_PR:
+			value=(char*)r->params[2];
+			memcpy(value,r->data,PAGESIZE);
+			memio_free_dma(2,r->dmatag);
+			break;
+		case LR_DELETE_R:
+			memcpy(r->res,r->data,PAGESIZE);
+			memio_free_dma(2,r->dmatag);
+			pthread_mutex_unlock(&r->meta_lock);
+			break;
+		case LR_DELETE_PW:
+		case LR_DELETE_W:
+			memio_free_dma(1,r->dmatag);
+			break;
 		case LR_DR_T:
 			parent=r->parent;
 			parent->keys=r->keys;
 			parent->dmatag=r->dmatag;
+			//cache_input(&processor.mycache,parent->flag,(sktable*)r->keys,r->dmatag);
 			pthread_mutex_unlock(&parent->meta_lock);
 			threadset_read_assign(&processor,parent);
 		//	while(!parent->meta->enqueue(data)){}
@@ -153,11 +196,11 @@ int8_t lr_end_req(lsmtree_req_t *r){
 			break;
 		case DISK_READ_T:
 		case LR_READ_T:
+			read_end_check++;
 //			delete r->meta;
 //			pthread_mutex_destroy(&r->meta_lock);
 #ifndef NDMA
 			memio_free_dma(2,r->req->dmaTag);
-			endcheck++;
 #else
 			free(r->req->value);
 #endif
@@ -180,6 +223,7 @@ int8_t lr_end_req(lsmtree_req_t *r){
 int8_t lr_gc_end_req(lsmtree_gc_req_t *r){
 	lsmtree_gc_req_t *parent;
 	int setnumber,offset;
+	char *target;
 	switch(r->type){
 		case LR_DW_T:
 #ifndef NDMA
@@ -187,6 +231,18 @@ int8_t lr_gc_end_req(lsmtree_gc_req_t *r){
 #else
 			free(r->keys);
 #endif
+			break;
+		case LR_DDW_T:
+			memio_free_dma(1,r->dmatag);
+			break;
+		case LR_DDR_T:
+			parent=r->parent;
+			target=(char*)r->params[2];
+			memcpy(target,r->data,PAGESIZE);
+			memio_free_dma(2,r->dmatag);
+			pthread_mutex_lock(&parent->meta_lock);
+			parent->now_number++;
+			pthread_mutex_unlock(&parent->meta_lock);
 			break;
 		case LR_DR_T:
 			parent=r->parent;
@@ -201,7 +257,11 @@ int8_t lr_gc_end_req(lsmtree_gc_req_t *r){
 			free(r->keys);
 #endif
 			break;
-		case LR_FLUSH_T:	
+		case LR_GC_T:
+		case LR_FLUSH_T:
+			pthread_mutex_lock(&gc_cnt_lock);
+			gc_end_check--;
+			pthread_mutex_unlock(&gc_cnt_lock);
 			pthread_mutex_destroy(&r->meta_lock);
 			if(r->compt_headers!=NULL)
 				free(r->compt_headers);

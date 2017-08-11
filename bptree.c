@@ -31,6 +31,7 @@ Entry *make_entry(KEYT key,KEYT end,KEYT pbn1){
 	res->key=key;
 	res->end=end;
 	res->pbn=pbn1;
+	res->bitset=NULL;
 	if(pbn1>INT_MAX)
 		sleep(10);
 	res->version=0;
@@ -41,10 +42,15 @@ Entry *level_entry_copy(Entry *input){
 	Entry *res=(Entry*)malloc(sizeof(Entry));
 	res->key=input->key; res->pbn=input->pbn; res->end=input->end;
 	res->version=input->version;
+	res->bitset=(uint8_t*)malloc(KEYN/8);
+	if(input->bitset!=NULL)
+		memcpy(res->bitset,input->bitset,KEYN/8);
 	res->parent=NULL;
 	return res;
 }
 void free_entry(Entry *entry){
+	if(entry->bitset!=NULL)
+		free(entry->bitset);
 	free(entry);
 }
 
@@ -69,7 +75,7 @@ Node *level_find_leafnode(level *lev, KEYT key){
 }
 
 Entry *level_find(level *lev, KEYT key){
-	Node *startN=level_find_leafnode(lev,0);
+	Node *startN=level_find_leafnode(lev,key);
 	Entry *temp=startN->children[0].entry;
 	if(temp==NULL) return NULL;
 	int cnt=1;

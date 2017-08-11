@@ -1,102 +1,63 @@
-#CFLAGS= -Wno-maybe-uninitialized
-#EXTRA_CFLAGS+= -march=armv7-a -mtune=cortex-a9 -mfpu=neon
-#EXTRA_LDFLAGS= -march=armv7-a -mtune=cortex-a9 -mfpu=neon -Wl,--fix-cortex-a8
-#HOST=arm-linux-gnueabihf
 CC=${HOST}-g++ -D_FILE_OFFSET_BITS=64
-CXX=${HOST}-g++ -D_FILE_OFFSET_BITS=64
-LD=${HOST}-ld
 
-#CC = g++ -D_FILE_OFFSET_BITS=64
-#CXX = g++ -D_FILE_OFFSET_BITS=64
-#LDFLAGS += -lpthread
-#CXXFLAGS += \
-         -I ./ \
-         -g \
-         -std=c++11 \
-         -D NOHOST \
-         -D NPRINTOPTION \
-        
-#CFLAGS += $(CXXFLAGS)
- 
-LIBFTL_LIB= ../../../bdbm_drv/frontend/libmemio/libmemio.a
-AM_LINK= $(AM_V_CCLD)$(CXX) $^ $(EXEC_LDFLAGS) -o $@ $(LDFLAGS) $(COVERAGEFLAGS) $(LIBFTL_LIB)
- 
-LIBFTL_INC += \
-       -I../../../bdbm_drv/frontend/libmemio \
-       -I../../../bdbm_drv/frontend/nvme \
-       -I../../../bdbm_drv/ftl \
-       -I../../../bdbm_drv/include \
-       -I../../../bdbm_drv/common/utils \
-       -I../../../bdbm_drv/common/3rd \
-       -I../../../bdbm_drv/devices/common \
-       -I./ \
-       -D USER_MODE \
-       -D HASH_BLOOM=20 \
-       -D CONFIG_ENABLE_MSG \
-       -D CONFIG_ENABLE_DEBUG \
-       -D USE_PMU \
-       -D USE_NEW_RMW \
-	#   -g \
-       #-D ZYNQ=1 \
- 
-CFLAGS += $(EXTRA_CFLAGS)
-LDFLAGS += $(EXTRA_LDFLAGS)
-CFLAGS += $(LIBFTL_INC)
-CXXFLAGS = $(CFLAGS)
-CXXFLAGS += $(LIBFTL_INC)
+BDBM = ../bdbm_drv
 
-CXXFLAGS += -std=c++11 -D_DEFAULT_SOURCE #-D NPRINTOPTION
-CXXFLAGS += -DNOHOST -DENABLE_LIBFTL -DLIBLSM #NPRINTOPTION 
-CFLAGS += -std=c++11 -D_DEFAULT_SOURCE  -DNOHOST -DLIBLSM
-CFLAGS += -DNOHOST -DENABLE_LIBFTL #-DDEBUG_MODE
-#CFLAGS += -DNOHOST 
-LDFLAGS += -L./ -lpthread -lmemio
-#LDFLAGS += -lpthread 
+CFLAGS  +=\
+		  -g\
+		  -DLIBLSM\
+		  -std=c++11\
+		  -DCPP\
+		  -Wwrite-strings\
+		  -DNOHOST\
+		  -DENABLE_LIBFTL\
+		  -DUSER_MODE\
+		  -DHASH_BLOOM=20 \
+		  -DCONFIG_ENABLE_MSG \
+		  -DCONFIG_ENABLE_DEBUG \
+		  -DUSE_PMU \
+		  -DUSE_NEW_RMW \
 
 
-OBJECTS = server.o command.o queue.o request.o priority_queue.o lsmtree.o bptree.o utils.o measure.o skiplist.o threading.o LR_inter.o
+INCLUDES :=     -I$(PWD) \
+	-I$(BDBM)/frontend/libmemio \
+	-I$(BDBM)/frontend/nvme \
+	-I$(BDBM)/ftl \
+	-I$(BDBM)/include \
+	-I$(BDBM)/common/utils \
+	-I$(BDBM)/common/3rd \
+	-I$(BDBM)/devices/common \
+
+LIBS    :=\
+	-lpthread\
+
+SRCS    :=\
+	$(PWD)/bptree.c\
+	$(PWD)/skiplist.c\
+	$(PWD)/LR_inter.cpp\
+	$(PWD)/lsmtree.cpp\
+	$(PWD)/lsm_cache.c\
+	$(PWD)/threading.cpp\
+	$(PWD)/measure.c\
+	$(PWD)/ppa.cpp\
+	$(PWD)/delete_set.c\
 
 
-#OBJECTS = server.c command.c queue.c request.c priority_queue.c lsmtree.c bptree.c utils.c measure.c skiplist.c threading.c LR_inter.c
-OBJECTS2 = lsmtree.o bptree.o measure.o skiplist.o threading.o LR_inter.o lsm_main.o lsm_cache.o
-LIBLSM: $(OBJECTS2) 
-	$(CXX) -o LIBLSM $(OBJECTS2) $(LDFLAGS) 
+OBJS    :=\
+	$(SRCS:.c=.o) $(SRCS:.cpp=.o)
 
-test : $(OBJECTS)
-	$(CXX) -o test $(OBJECTS) $(LDFLAGS)
+all : LIBLSM
 
+LIBLSM : libmemio.a liblsm.a lsm_main.c
+	$(CC) $(INCLUDES) $(CFLAGS) -o $@ lsm_main.c liblsm.a libmemio.a $(LIBS)
+	@$(RM) *.o
+	@$(RM) liblsm.a
 
-priority_queue.o : $*.*
-        
-server.o : $*.*
+liblsm.a: $(OBJS)
+	$(AR) r $(@) $(OBJS)
 
-command.o : $*.*
+.c.o    :
+	$(CC) $(INCLUDES) $(CFLAGS) -c $< -o $@
 
-queue.o : $*.*
+.cpp.o  :
+	$(CC) $(INCLUDES) $(CFLAGS) -c $< -o $@
 
-requestt.o : $*.* priority_queue.c
-
-skip.o : $*.*
-
-bptree.o : $*.*
- 
-measure.o : $*.*
-
-skiplist.o : $*.* measure.c
-
-lsm_cache.o : $*.* skiplist.c
-
-threading.o : $*.* measure.c
-
-bptree.o : $*.* skiplist.c
-
-lsmtree.o : $*.* bptree.c skiplist.c measure.c
-
-LR_inter.o : $*.*
-
-lsm_main.o : $*.*
-
-test.o : $*.*
-
-clean :
-	rm -f *.o
