@@ -46,12 +46,13 @@ KEYT *keys;
 int cnnt=0;
 bool utils_flag;
 #define FLAGS 11
+/*
 void *util_check(void *){
 	while(utils_flag){
 	//	printf("%d\n",127-mio->tagQ->size());
 		//fprintf(stderr,"%f\n",processor.threads[0].flag);
 	}
-}
+}*/
 int main(){
 	wt=at=NULL;
 	lr_inter_init();
@@ -77,7 +78,7 @@ int main(){
 			key=i;
 		}
 			req->key=key;
-#ifndef NDMA
+#ifdef ENABLE_LIBFTL
 		req->dmaTag=memio_alloc_dma(req->type,&req->value);
 #else
 		req->value=(char*)malloc(PAGESIZE);
@@ -90,6 +91,14 @@ int main(){
 	threadset_gc_wait(&processor);
 	measure_end(&mt,"write_wait");
 	
+	for(int i=0; i<INPUTSIZE/2; i++){
+		req=(req_t *)malloc(sizeof(req_t));
+		req->key=rand()%INPUTSIZE;
+		req->type=3;
+		lr_make_req(req);
+	}
+
+/*
 	pthread_t thr;
 	processor.threads[0].flag=0;
 	//pthread_create(&thr,NULL,util_check,NULL);
@@ -135,7 +144,8 @@ int main(){
 //	printf("readtime:%.6f\n",(float)rt.adding.tv_usec/1000000);
 //	printf("wt:%.6f\n",(float)wt->adding.tv_usec/1000000);
 //	printf("at:%.6f\n",(float)at->adding.tv_usec/1000000);
-	/*
+*/	
+/*
 	printf("1>>max:%ld sec and %.6f\n",max_time1.tv_sec,(float)max_time1.tv_usec/1000000);
 	printf("1>>over time (%d): %d\n",INPUTSIZE,big_time_check1);
 	printf("1>>avg:%ld sec and %6.6f-%d\n",adding.tv_sec/end_counter,((float)adding.tv_usec/1000000),end_counter);
@@ -147,11 +157,12 @@ int main(){
 		printf("\n--------------[level %d]-------\n",i);
 		level_print(LSM->buf.disk[i]);
 	}*/
+/*
 	threadset_debug_print(&processor);
 	cache_summary(&processor.mycache);
 	printf("pros hit 1 : %d\n",pros_hit);
 	printf("pros hit 2 : %d\n",pros_hit2);
 	printf("mem hit :%d\n",mem_hit);
 	printf("cache_hit : %d\n",cache_hit);
-
+*/
 }

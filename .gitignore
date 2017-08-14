@@ -2,3 +2,4 @@
 *.a
 LIBLSM
 data/
+object/

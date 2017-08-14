@@ -30,8 +30,11 @@ MeasureTime rt;
 int gc_end_check;
 int read_end_check;
 int write_end_check;
+pthread_mutex_t write_check_lock;
 int temp_check;
 void threading_init(threading *input){
+	pthread_mutex_init(&write_check_lock,NULL);
+
 	pthread_mutex_init(&input->terminate,NULL);
 
 	input->terminateflag=false;
@@ -172,6 +175,7 @@ void* thread_gc_main(void *input){
 				lsm_req->target_number=0;
 				lsm_req->flag=1;
 				result_entry=make_entry(data->start,data->end,write_data(LSM,data,lsm_req));
+				result_entry->bitset=data->bitset;
 				skiplist_meta_free(data);
 				compaction(LSM,NULL,LSM->buf.disk[0],result_entry,lsm_req);
 				lsm_req->end_req(lsm_req);
@@ -184,8 +188,8 @@ void* thread_gc_main(void *input){
 					for(int j=i-1; j>=0; j--){
 						if(LSM->buf.disk[j]->size==0)
 							continue;
-						src=LSM->buf.disk[i];
-						des=LSM->buf.disk[j];
+						src=LSM->buf.disk[j];
+						des=LSM->buf.disk[i];
 						pthread_mutex_init(&lsm_req->meta_lock,NULL);
 						compaction(LSM,src,des,NULL,lsm_req);
 						break;
@@ -214,12 +218,6 @@ void* thread_main(void *input){
 	while(1){
 		lsmtree_req_t *lsm_req;
 		void *data=NULL;
-		/*
-		   if(header_flag){
-		   while(!master->read_q->dequeue(&data)){}
-		   header_flag=false;
-		   }
-		   else{*/
 		while(1){
 			if(!master->read_q->dequeue(&data)){
 				if(!master->req_q->dequeue(&data)){
@@ -228,8 +226,7 @@ void* thread_main(void *input){
 				break;
 			}
 			break;
-		}/*
-			}*/
+		}
 		lsm_req=(lsmtree_req_t*)data;
 		pthread_mutex_lock(&myth->terminate);
 		if(myth->terminateflag){
@@ -280,15 +277,16 @@ void* thread_main(void *input){
 					}
 					value=(char*)lsm_req->params[2];
 					put(LSM,*key,value,lsm_req);
-					temp_check++;
+					pthread_mutex_lock(&write_check_lock);
+					write_end_check--;
+					pthread_mutex_unlock(&write_check_lock);
 					break;
 				case LR_DELETE_T:
 					if(is_flush_needed(LSM)){
-						lr_gc_make_req(0);
+						lr_gc_make_req(1);
 					}
 					value=NULL;
 					put(LSM,*key,NULL,lsm_req);
-					temp_check++;
 					break;
 				default:
 					break;
@@ -330,7 +328,7 @@ void threadset_read_wait(threadset *input){
 	while(read_end_check!=temp_check){}
 }
 void threadset_request_wait(threadset *input){
-	while(temp_check!=INPUTSIZE){
+	while(write_end_check){
 	}
 }
 void threadset_end(threadset *input){

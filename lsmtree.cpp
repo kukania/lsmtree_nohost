@@ -1,4 +1,3 @@
-
 #include"bptree.h"
 #include"lsmtree.h"
 #include"skiplist.h"
@@ -46,6 +45,8 @@ int mem_hit;
 LEVELN+1=last
  */
 #endif
+
+
 KEYT write_data(lsmtree *LSM,skiplist *input,lsmtree_gc_req_t *req){
 	return skiplist_write(input,req,LSM->dfd,LSM->dfd);
 }
@@ -173,7 +174,12 @@ int thread_level_get(lsmtree *LSM,KEYT key, threading *input, char *ret, lsmtree
 		cache_input(&input->master->mycache,l,sk,req->dmatag);
 		return 1;
 	}
+
+#ifdef ENABLE_LIBFTL
 	memio_free_dma(2,req->dmatag);
+#else
+	free(req->keys);
+#endif
 
 	bool metaflag;
 	bool returnflag=0;
@@ -317,8 +323,11 @@ lsmtree* lsm_reset(lsmtree* input){
 bool compaction(lsmtree *LSM,level *src, level *des,Entry *ent,lsmtree_gc_req_t * req){
 	static int wn=0;
 	Entry *target;
+	KEYT s_start,s_end;
 	if(src==NULL){
 		target=ent;
+		s_start=ent->key;
+		s_end=ent->end;
 	}
 	else{
 		target=level_get_victim(src);
@@ -335,7 +344,7 @@ bool compaction(lsmtree *LSM,level *src, level *des,Entry *ent,lsmtree_gc_req_t 
 		last=(skiplist*)malloc(sizeof(skiplist));
 		skiplist_init(last);
 	}
-	Entry **iter=level_range_find(des,target->key,target->end);
+	Entry **iter=level_range_find(des,src->s_start,src->s_end);
 
 	bool check_getdata=false;
 	KEYT *delete_sets=NULL;

@@ -1,35 +1,27 @@
 #include<string.h>
 #include"delete_set.h"
-#include"libmemio.h"
 #include"bptree.h"
 #include"lsmtree.h"
 #include"LR_inter.h"
 #include"ppa.h"
 extern lsmtree *LSM;
+#ifdef ENABLE_LIBFTL
+#include"libmemio.h"
 extern memio *mio;
+#endif
 extern KEYT ppa;
 uint64_t *oob;
-int8_t delete_end_req(lsmtree_req_t *req){
-	switch(req->type){
-		case LR_DELETE_W:
-			free(req);
-			break;
-		case LR_DELETE_R:
-			pthread_mutex_unlock(&req->meta_lock);
-			break;
-	}
-}
 lsmtree_req_t * delete_make_req(bool iswrite){
 	lsmtree_req_t *req=(lsmtree_req_t *)malloc(sizeof(lsmtree_req_t));
 	if(iswrite){
-		req->type=LR_DELETE_W;
+		req->type=LR_DELETE_PW;
 	}
 	else{
-		req->type=LR_DELETE_R;
+		req->type=LR_DELETE_PR;
 		pthread_mutex_init(&req->meta_lock,NULL);
 		pthread_mutex_lock(&req->meta_lock);
 	}
-	req->end_req=delete_end_req;
+	req->end_req=lr_end_req;
 	return req;
 }
 void delete_init(delete_set *set){
@@ -92,9 +84,17 @@ void delete_trim_process(delete_set *set){
 					sktable *sk=(sktable*)malloc(sizeof(sktable));
 					req->res=sk;
 					char *temp_p;
+#ifdef ENABLE_LIBFTL
 					req->dmatag=memio_alloc_dma(2,&temp_p);
+#else
+					temp_p=(char*)malloc(PAGESIZE);
+#endif
 					req->data=temp_p;
+#ifdef ENABLE_LIBFTL
 					memio_read(mio,header->pbn,(uint64_t)(PAGESIZE),(uint8_t *)req->data,1,req,req->dmatag);
+#else
+					//read
+#endif
 					//read header data;
 					pthread_mutex_lock(&req->meta_lock);
 					pthread_mutex_destroy(&req->meta_lock);
@@ -104,30 +104,55 @@ void delete_trim_process(delete_set *set){
 						char *value=(char *)malloc(PAGESIZE);
 						/*page read*/
 						req=delete_make_req(0);//read
-						req->type=LR_DELETE_PR;
+#ifdef ENABLE_LIBFTL
 						req->dmatag=memio_alloc_dma(2,&temp_p);
+#else
+						temp_p=(char*)malloc(PAGESIZE);
+#endif
 						req->data=temp_p;
 						req->params[2]=(void*)value;
+#ifdef ENABLE_LIBFTL
 						memio_read(mio,temp_key->ppa,(uint64_t)PAGESIZE,(uint8_t *)req->data,1,req,req->dmatag);
+#else
+						//read
+#endif
 						pthread_mutex_lock(&req->meta_lock);
 						pthread_mutex_destroy(&req->meta_lock);
 						/*page read*/
-						
+						/*
+						 *write oob
+						 * */
 						KEYT new_ppa=getPPA(); 
 						req=delete_make_req(1);//write
+#ifdef ENABLE_LIBFTL
 						req->dmatag=memio_alloc_dma(1,&temp_p);
+#else
+						temp_p=(char*)malloc(PAGESIZE);
+#endif
 						req->data=temp_p;
 						memcpy(temp_p,value,PAGESIZE);
+#ifdef ENABLE_LIBFTL
 						memio_write(mio,new_ppa,(uint64_t)PAGESIZE,(uint8_t *)req->data,1,req,req->dmatag);
+#else
+						//write
+#endif
 						temp_key->ppa=new_ppa;
 						free(value);
 					}
 					KEYT new_pba=getPPA(); 
 					req=delete_make_req(1);//write
+#ifdef ENABLE_LIBFTL
 					req->dmatag=memio_alloc_dma(1,&temp_p);
+#else
+					temp_p=(char*)malloc(PAGESIZE);
+#endif
 					req->data=temp_p;
 					memcpy(temp_p,sk,PAGESIZE);
+#ifdef ENABLE_LIBFTL
 					memio_write(mio,new_pba,(uint64_t)PAGESIZE,(uint8_t*)req->data,1,req,req->dmatag);
+#else
+					//write
+#endif
 					KEYT temp_pba=header->pbn;
 					header->pbn=new_pba;
 					delete_ppa(set,temp_pba);
@@ -139,7 +164,9 @@ void delete_trim_process(delete_set *set){
 	}
 	
 	//send trim operation;
+#ifdef ENABLE_LIBFTL
 	memio_trim(mio,block_num*PAGENUM,PAGENUM);
+#endif
 	for(int i=block_num*PAGENUM; i<PAGENUM*block_num+PAGENUM;i++){
 		freePPA(i);
 	}

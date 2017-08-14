@@ -20,6 +20,7 @@ MeasureTime mas2;
 pthread_mutex_t print_lock;
 extern pthread_mutex_t sst_lock;
 extern pthread_mutex_t mem_lock;
+extern pthread_mutex_t write_check_lock;
 pthread_mutex_t pl;
 pthread_mutex_t endR;
 
@@ -78,6 +79,7 @@ int8_t lr_gc_make_req(int8_t t_num){
 	pthread_mutex_lock(&gc_cnt_lock);
 	gc_end_check++;
 	pthread_mutex_unlock(&gc_cnt_lock);
+
 	gc_req->flag=0;
 	gc_req->params[1]=NULL;
 	gc_req->params[2]=(void*)LSM->sstable;
@@ -97,11 +99,12 @@ int8_t lr_make_req(req_t *r){
 		switch(r->type_info->type){
 #endif
 			case 3:
-				write_end_check++;
 				th_req->type=LR_DELETE_T;
 				break;
 			case 1://set
+				pthread_mutex_lock(&write_check_lock);
 				write_end_check++;
+				pthread_mutex_unlock(&write_check_lock);
 				th_req->type=LR_WRITE_T;
 				break;
 			case 2://get
@@ -154,16 +157,28 @@ int8_t lr_end_req(lsmtree_req_t *r){
 		case LR_DELETE_PR:
 			value=(char*)r->params[2];
 			memcpy(value,r->data,PAGESIZE);
+#ifdef ENABLE_LIBFTL
 			memio_free_dma(2,r->dmatag);
+#else
+			free(r->data);
+#endif
 			break;
 		case LR_DELETE_R:
 			memcpy(r->res,r->data,PAGESIZE);
+#ifdef ENABLE_LIBFTL
 			memio_free_dma(2,r->dmatag);
+#else
+			free(r->data);
+#endif
 			pthread_mutex_unlock(&r->meta_lock);
 			break;
 		case LR_DELETE_PW:
-		case LR_DELETE_W:
+#ifdef ENABLE_LIBFTL
 			memio_free_dma(1,r->dmatag);
+#else
+			free(r->data);
+#endif
+		case LR_DELETE_W:
 			break;
 		case LR_DR_T:
 			parent=r->parent;
@@ -174,10 +189,10 @@ int8_t lr_end_req(lsmtree_req_t *r){
 			threadset_read_assign(&processor,parent);
 		//	while(!parent->meta->enqueue(data)){}
 			//memcpy(parent->res,r->keys,PAGESIZE);
-#ifndef NDMA
+#ifdef ENABLE_LIBFTL
 		//	memio_free_dma(2,r->dmatag);
 #else
-			free(r->keys);
+		//	free(r->keys);
 #endif
 	//		MS(&bp);
 	//		MA(&bp);
@@ -188,7 +203,7 @@ int8_t lr_end_req(lsmtree_req_t *r){
 			r->req=NULL;
 			break;
 		case LR_DDW_T:
-#ifndef NDMA
+#ifdef ENABLE_LIBFTL
 			memio_free_dma(1,r->req->dmaTag);
 #else
 			free(r->req->value);
@@ -199,7 +214,7 @@ int8_t lr_end_req(lsmtree_req_t *r){
 			read_end_check++;
 //			delete r->meta;
 //			pthread_mutex_destroy(&r->meta_lock);
-#ifndef NDMA
+#ifdef ENABLE_LIBFTL
 			memio_free_dma(2,r->req->dmaTag);
 #else
 			free(r->req->value);
@@ -226,20 +241,28 @@ int8_t lr_gc_end_req(lsmtree_gc_req_t *r){
 	char *target;
 	switch(r->type){
 		case LR_DW_T:
-#ifndef NDMA
+#ifdef ENABLE_LIBFTL
 			memio_free_dma(1,r->dmatag);
 #else
 			free(r->keys);
 #endif
 			break;
 		case LR_DDW_T:
+#ifdef ENABLE_LIBFTL
 			memio_free_dma(1,r->dmatag);
+#else
+			free(r->data);
+#endif
 			break;
 		case LR_DDR_T:
 			parent=r->parent;
 			target=(char*)r->params[2];
 			memcpy(target,r->data,PAGESIZE);
+#ifdef ENABLE_LIBFTL
 			memio_free_dma(2,r->dmatag);
+#else
+			free(r->data);
+#endif
 			pthread_mutex_lock(&parent->meta_lock);
 			parent->now_number++;
 			pthread_mutex_unlock(&parent->meta_lock);
@@ -251,7 +274,7 @@ int8_t lr_gc_end_req(lsmtree_gc_req_t *r){
 			pthread_mutex_lock(&parent->meta_lock);
 			parent->now_number++;
 			pthread_mutex_unlock(&parent->meta_lock);
-#ifndef NDMA
+#ifdef ENABLE_LIBFTL
 			memio_free_dma(2,r->dmatag);
 #else
 			free(r->keys);

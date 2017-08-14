@@ -36,12 +36,12 @@ void cache_input(lsm_cache* input,int l,sktable* sk,int tag){
 			value=i;
 		}
 	}
-
-	if(victim->cpyflag){
-		free(victim->content);
-	}
-	else{
+	if(victim->content!=NULL){
+#ifdef ENABLE_LIBFTL
 		memio_free_dma(2,victim->dmatag);
+#else
+		free(victim->content);
+#endif
 	}
 	input->all_hit+=victim->hit;
 	victim->hit=0;
@@ -62,13 +62,6 @@ keyset* cache_level_find(lsm_cache* input,int l,KEYT k){
 		if(res!=NULL) {
 			input->caches[l][j].check_bit=input->time_bit++;
 			input->caches[l][j].hit++;
-			if(!input->caches[l][j].cpyflag &&input->caches[l][j].hit>=CACHETH){
-				input->caches[l][j].cpyflag=true;
-				sktable *temp_sk=input->caches[l][j].content;
-				input->caches[l][j].content=(sktable*)malloc(PAGESIZE);
-				memcpy(input->caches[l][j].content,temp_sk,PAGESIZE);
-				memio_free_dma(2,input->caches[l][j].dmatag);
-			}
 			return res;
 		}
 	}

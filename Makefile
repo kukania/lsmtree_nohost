@@ -9,13 +9,13 @@ CFLAGS  +=\
 		  -DCPP\
 		  -Wwrite-strings\
 		  -DNOHOST\
-		  -DENABLE_LIBFTL\
 		  -DUSER_MODE\
 		  -DHASH_BLOOM=20 \
 		  -DCONFIG_ENABLE_MSG \
 		  -DCONFIG_ENABLE_DEBUG \
 		  -DUSE_PMU \
 		  -DUSE_NEW_RMW \
+		  #-DENABLE_LIBFTL\
 
 
 INCLUDES :=     -I$(PWD) \
@@ -31,29 +31,33 @@ LIBS    :=\
 	-lpthread\
 
 SRCS    :=\
-	$(PWD)/bptree.c\
-	$(PWD)/skiplist.c\
-	$(PWD)/LR_inter.cpp\
-	$(PWD)/lsmtree.cpp\
-	$(PWD)/lsm_cache.c\
-	$(PWD)/threading.cpp\
-	$(PWD)/measure.c\
-	$(PWD)/ppa.cpp\
-	$(PWD)/delete_set.c\
+	bptree.c\
+	skiplist.c\
+	LR_inter.cpp\
+	lsmtree.cpp\
+	lsm_cache.c\
+	threading.cpp\
+	measure.c\
+	ppa.cpp\
+	delete_set.c\
 
 
 OBJS    :=\
-	$(SRCS:.c=.o) $(SRCS:.cpp=.o)
+	$(patsubst %.c,%.o,$(SRCS))\
+
+OBJS :=\
+	$(patsubst %.cpp,%.o,$(OBJS))\
+	
+TARGETOBJ :=\
+	$(addprefix object/,$(OBJS))\
 
 all : LIBLSM
 
-LIBLSM : libmemio.a liblsm.a lsm_main.c
-	$(CC) $(INCLUDES) $(CFLAGS) -o $@ lsm_main.c liblsm.a libmemio.a $(LIBS)
-	@$(RM) *.o
-	@$(RM) liblsm.a
+LIBLSM : liblsm.a lsm_main.c
+	$(CC) $(INCLUDES) $(CFLAGS) -o $@ lsm_main.c liblsm.a $(LIBS)
 
-liblsm.a: $(OBJS)
-	$(AR) r $(@) $(OBJS)
+liblsm.a: $(TARGETOBJ)
+	$(AR) r $(@) $(TARGETOBJ)
 
 .c.o    :
 	$(CC) $(INCLUDES) $(CFLAGS) -c $< -o $@
@@ -61,3 +65,13 @@ liblsm.a: $(OBJS)
 .cpp.o  :
 	$(CC) $(INCLUDES) $(CFLAGS) -c $< -o $@
 
+object/%.o: %.c
+	$(CC) $(INCLUDES) $(CFLAGS) -c $< -o $@
+
+object/%.o: %.cpp
+	$(CC) $(INCLUDES) $(CFLAGS) -c $< -o $@
+
+clean	:
+	@$(RM) object/*.o
+	@$(RM) liblsm.a
+	@$(RM) LIBLSM

@@ -63,6 +63,8 @@ level *level_init(level* input, int size){
 	input->version=0;
 	input->m_size=size;
 	input->depth=0;
+	input->start=UINT_MAX;
+	input->end=0;
 	return input;
 }
 
@@ -148,31 +150,27 @@ Entry *level_get_victim(level *lev){
 		}
 	}
 	return res;
-	/*
-	Entry *temp=level_getFirst(lev);
-	Entry *res=temp;
-	KEYT version=tmep->version;
-	temp=temp->parent->children[1].entry;
-	int cnt=0;
-	while(temp!=NULL){
-		if(temp->key <min){
-			res=temp;
-			min=temp->key;
-		}
-		if(temp->parent==NULL)
-			return temp;
-		if(cnt<temp->parent->count){
-			temp=temp->parent->children[cnt++].entry;
-		}else{
-			if(temp->parent->children[MAXC].node==NULL) break;
-			temp=temp->parent->children[MAXC].node->children[0].entry;
-			cnt=1;
-		}
-		
-	}
-	return temp;*/
+}
+Iter* level_get_Iter(level *lev){
+	Iter *res=(Iter*)malloc(Iter);
+	res->now=level_find_leafnode(lev,0);
+	res->entry=res->now->children[0].entry;
+	res->idx=-1;
+	return res;
 }
 
+Entry *level_get_next(Iter *input){
+	if(input->idx<input->now->count){
+		input->idx++;
+		return input->now->children[input->idx].entry;
+	}
+	else{
+		input->now=input->now->children[MAXC].node;
+		if(input->now==NULL) return NULL;
+		input->idx=0;
+		return input->now->children[input->idx].entry;
+	}
+}
 
 Node *level_directory_insert(level *lev,Node *target, KEYT sep, Node *prev, Node *next){
 	while(1){
@@ -241,11 +239,15 @@ Node *level_directory_insert(level *lev,Node *target, KEYT sep, Node *prev, Node
 }
 
 Node *level_insert(level* lev, Entry *entry){
-	Node *temp=level_find_leafnode(lev,entry->key);
 	if(entry->pbn>INT_MAX){
 		printf("??");
 	}
 	if(lev->size+1>lev->m_size) return NULL;
+	if(lev->start>entry->key)
+		lev->start=entry->key;
+	if(lev->end<entry->end)
+		lev->start=entry->end;
+	Node *temp=level_find_leafnode(lev,entry->key);
 	if(entry->version==0) entry->version=lev->version++;
 	if(temp->count==0){
 		temp->separator[0]=entry->key;
