@@ -25,7 +25,7 @@
 #define ENDMERGE 0.5
 #define MAXC 10
 #define MAXNODE 250000
-#define SEQUENCE 1
+#define SEQUENCE 0
 #define READTEST
 #define GETTEST
 
