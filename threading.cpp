@@ -228,7 +228,7 @@ void* thread_main(void *input){
 					test_num=thread_level_get(LSM,*key,myth,value,lsm_req,lsm_req->flag);
 					if(test_num<=0){
 						printf("[%u]not_found in level : [%lu: %d : %lu]\n",*key,lsm_req->now_number,test_num,lsm_req->seq_number);
-						sleep(1);
+						//sleep(1);
 						lsm_req->end_req(lsm_req);
 					}
 					break;
@@ -240,7 +240,7 @@ void* thread_main(void *input){
 	//				MA(&bp);
 					if(test_num==0){
 						printf("[%u]not_found\n",*key);
-						sleep(1);
+						//sleep(1);
 						lsm_req->end_req(lsm_req);
 					}
 					if(test_num==2)

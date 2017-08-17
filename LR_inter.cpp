@@ -43,7 +43,6 @@ int8_t lr_inter_init(){
 	return -1;
 }
 int8_t lr_inter_free(){
-	printf("end called~~\n");
 	threadset_end(&processor);
 	threadset_clear(&processor);
 	pthread_mutex_destroy(&pl);
@@ -145,17 +144,22 @@ int8_t lr_end_req(lsmtree_req_t *r){
 			threadset_read_assign(&processor,parent);
 		//	while(!parent->meta->enqueue(data)){}
 			//memcpy(parent->res,r->keys,PAGESIZE);
-
+#ifndef NDMA
+		//	memio_free_dma(2,r->dmatag);
+#else
+			free(r->keys);
+#endif
 	//		MS(&bp);
 	//		MA(&bp);
 			break;
 		case LR_DDR_T:
 			parent=r->parent;
-			parent->end_req(parent);	
+			parent->end_req(parent);
+			endcheck++;
 			r->req=NULL;
 			break;
 		case LR_DDW_T:
-#ifdef ENABLE_LIBFTL
+#ifndef NDMA
 			memio_free_dma(1,r->req->dmaTag);
 #else
 			free(r->req->value);
@@ -166,7 +170,7 @@ int8_t lr_end_req(lsmtree_req_t *r){
 			read_end_check++;
 //			delete r->meta;
 //			pthread_mutex_destroy(&r->meta_lock);
-#ifdef ENABLE_LIBFTL
+#ifndef NDMA
 			memio_free_dma(2,r->req->dmaTag);
 #else
 			free(r->req->value);
@@ -192,7 +196,7 @@ int8_t lr_gc_end_req(lsmtree_gc_req_t *r){
 	int setnumber,offset;
 	switch(r->type){
 		case LR_DW_T:
-#ifdef ENABLE_LIBFTL
+#ifndef NDMA
 			memio_free_dma(1,r->dmatag);
 #else
 			free(r->keys);
@@ -205,7 +209,7 @@ int8_t lr_gc_end_req(lsmtree_gc_req_t *r){
 			pthread_mutex_lock(&parent->meta_lock);
 			parent->now_number++;
 			pthread_mutex_unlock(&parent->meta_lock);
-#ifdef ENABLE_LIBFTL
+#ifndef NDMA
 			memio_free_dma(2,r->dmatag);
 #else
 			free(r->keys);

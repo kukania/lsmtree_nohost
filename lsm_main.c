@@ -3,9 +3,8 @@
 #include"lsm_cache.h"
 #include"utils.h"
 #include"threading.h"
-#ifdef ENABLE_FTL
+#ifndef NDMA
 #include"libmemio.h"
-extern memio* mio;
 #endif
 #include<sys/types.h>
 #include<sys/stat.h>
@@ -31,6 +30,7 @@ extern MeasureTime find;
 
 
 extern pthread_mutex_t endR;
+extern memio* mio;
 extern timeval max_time;
 extern int big_time_check;
 extern timeval max_time1,adding;
@@ -42,6 +42,7 @@ extern int pros_hit2;
 extern int cache_hit;
 extern int mem_hit;
 extern lsmtree *LSM;
+extern int endcheck;
 KEYT *keys;
 int cnnt=0;
 int main(){
@@ -55,7 +56,7 @@ int main(){
 	measure_start(&mt);
 	keys=(KEYT*)malloc(sizeof(KEYT)*INPUTSIZE);
 	for(int i=0; i<INPUTSIZE; i++){
-		keys[i]=rand()%INT_MAX+1;
+		keys[i]=rand()+1;
 	}
 	int cnt=1;
 	for(int i=1; i<=INPUTSIZE; i++){
@@ -69,7 +70,7 @@ int main(){
 			key=i;
 		}
 			req->key=key;
-#ifdef ENABLE_LIBFTL
+#ifndef NDMA
 		req->dmaTag=memio_alloc_dma(req->type,&req->value);
 #else
 		req->value=(char*)malloc(PAGESIZE);
@@ -88,8 +89,8 @@ int main(){
 	for(int i=1; i<=INPUTSIZE; i++){
 		req=(req_t*)malloc(sizeof(req_t));
 		req->type=2;
-		//if(i%1024==0)
-			//printf("%d throw\n",i);
+		if(i%1024==0)
+			printf("%d throw\n",i);
 		if(SEQUENCE==0){
 			key=keys[i-1];
 		}
@@ -98,7 +99,7 @@ int main(){
 		}
 		req->key=key;
 		key=i;
-#ifdef ENABLE_LIBFTL
+#ifndef NDMA
 		//printf("main_alloc!\n");
 		req->dmaTag=memio_alloc_dma(req->type,&req->value);
 #else
@@ -107,7 +108,10 @@ int main(){
 		lr_make_req(req);
 	}
 	//printf("throw all read req!\n");
-	threadset_read_wait(&processor);
+	threadset_read_wait(&processor);/*
+	while(endcheck!=INPUTSIZE-KEYN){
+		printf("%d\n",endcheck);
+	}*/
 	measure_end(&mt,"read_end");
 	printf("meta_read_data:%d\n",meta_read_data);
 	//measure_end(&mt,"read_end");

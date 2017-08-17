@@ -167,11 +167,7 @@ int thread_level_get(lsmtree *LSM,KEYT key, threading *input, char *ret, lsmtree
 		cache_input(&input->master->mycache,l,sk,req->dmatag);
 		return 1;
 	}
-#ifdef ENABLE_LIBFTL
 	memio_free_dma(2,req->dmatag);
-#else
-	free(req->keys);
-#endif
 	//printf("freed!\n");
 	bool metaflag;
 	bool returnflag=0;
@@ -318,10 +314,11 @@ bool compaction(lsmtree *LSM,level *src, level *des,Entry *ent,lsmtree_gc_req_t 
 	}
 	else{
 		target=level_get_victim(src);
+		/*
 		if(target->pbn>INT_MAX){
 			printf("compaction_target\n");
 			sleep(10);
-		}
+		}*/
 		Entry *target2=level_entry_copy(target);
 		level_delete(src,target->key);
 		target=target2;
@@ -351,7 +348,7 @@ bool compaction(lsmtree *LSM,level *src, level *des,Entry *ent,lsmtree_gc_req_t 
 		for(int i=0; iter[i]!=NULL ;i++){
 			Entry *temp_e=iter[i];
 			delete_set[deleteIdx++]=temp_e->key;
-			if(temp_e->key > INT_MAX){
+			if(temp_e->key > UINT_MAX){
 				printf("des print!!!\n");
 				level_print(des);
 			}
@@ -389,10 +386,11 @@ bool compaction(lsmtree *LSM,level *src, level *des,Entry *ent,lsmtree_gc_req_t 
 
 		while((t=skiplist_cut(last,KEYN))){
 			Entry* temp_e=make_entry(t->start, t->end, write_meta_only(LSM,t,req));
+			/*
 			if(temp_e->pbn>INT_MAX){
 				printf("compaction wirte!\n");
 				sleep(10);
-			}
+			}*/
 			level_insert(des,temp_e);
 			skiplist_meta_free(t);
 		}

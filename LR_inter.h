@@ -5,6 +5,10 @@
 #include<pthread.h>
 #include"skiplist.h"
 #include"utils.h"
+
+#ifndef LIBLSM
+#include"request.h"
+#endif
 //#include"lockfreeq.h"
 #ifndef LIBLSM
 //#include"request.h"
@@ -41,7 +45,7 @@ typedef struct lsmtree_gc_req_t{
 	uint8_t type;
 	uint8_t flag;
 	void *params[4];
-	int8_t (*end_req)(struct lsmtree_gc_req_t *);
+	int8_t (*end_req)(lsmtree_gc_req_t *);
 	pthread_mutex_t meta_lock;
 	uint64_t now_number;
 	uint64_t target_number;
@@ -62,7 +66,7 @@ typedef struct lsmtree_req_t{
 	uint8_t type;
 	uint8_t flag;
 	void *params[4];
-	int8_t (*end_req)(struct lsmtree_req_t *);
+	int8_t (*end_req)(lsmtree_req_t *);
 	pthread_mutex_t meta_lock;
 	uint64_t now_number;
 	uint64_t target_number;

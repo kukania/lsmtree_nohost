@@ -73,7 +73,7 @@ void measure_calc(MeasureTime *m){
 	m->header=m->header->next;
 	free(t);
 }*/
-#ifdef DCPP
+#ifdef NOHOST
 void measure_end(MeasureTime *m,std::string input ){
 	char format[200];
 	memcpy(format,input.c_str(),input.length());
@@ -88,7 +88,7 @@ void measure_end(MeasureTime *m,std::string input ){
 	return;
 }
 #else
-void measure_end(MeasureTime *m,const char *format){
+void measure_end(MeasureTime *m,char *format){
 	struct timeval res; linktime *t;
 	gettimeofday(&m->header->end,NULL);
 	timersub(&m->header->end,&m->header->start,&res);

@@ -31,8 +31,9 @@ Entry *make_entry(KEYT key,KEYT end,KEYT pbn1){
 	res->key=key;
 	res->end=end;
 	res->pbn=pbn1;
+	/*
 	if(pbn1>INT_MAX)
-		sleep(10);
+		sleep(10);*/
 	res->version=0;
 	res->parent=NULL;
 	return res;
@@ -94,7 +95,7 @@ Entry **level_range_find(level *lev, KEYT start, KEYT end){
 	Entry *temp=startN->children[0].entry;
 	if(temp==NULL) return NULL;
 	Entry **res=(Entry **)malloc(sizeof(Entry *)*(lev->m_size+1));
-//	printf("nsize:%d msize:%d key:%u~%u\n",lev->size,lev->m_size,start,end);
+	printf("nsize:%d msize:%d key:%u~%u\n",lev->size,lev->m_size,start,end);
 	int idx=0;
 	int cnt=1;
 	bool startingFlag=false;
@@ -236,9 +237,10 @@ Node *level_directory_insert(level *lev,Node *target, KEYT sep, Node *prev, Node
 
 Node *level_insert(level* lev, Entry *entry){
 	Node *temp=level_find_leafnode(lev,entry->key);
+	/*
 	if(entry->pbn>INT_MAX){
 		printf("??");
-	}
+	}*/
 	if(lev->size+1>lev->m_size) return NULL;
 	if(entry->version==0) entry->version=lev->version++;
 	if(temp->count==0){

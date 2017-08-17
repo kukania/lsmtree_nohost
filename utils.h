@@ -9,11 +9,11 @@
 #define FILTERFUNC 5
 #define FILTERBIT ((1000*6)/8)
 
-#define KEYN 512
-#define PAGESIZE (4096)
+#define KEYN 1024
+#define PAGESIZE (8192)
 #define MUL 24
 #define LEVELN 5
-#define INPUTSIZE (1024*256)
+#define INPUTSIZE (1024*128)
 #define BUSYPOINT 0.7
 #define THREADQN 1024
 #define THREADNUM 1
@@ -25,7 +25,7 @@
 #define ENDMERGE 0.5
 #define MAXC 10
 #define MAXNODE 250000
-#define SEQUENCE 0
+#define SEQUENCE 1
 #define READTEST
 #define GETTEST
 
@@ -35,10 +35,9 @@
 #define WAITMETAN	128
 
 
-#define SNODE_SIZE (4096)
+#define SNODE_SIZE (8192)
 //#define SKIP_BLOCK ((4096+sizeof(int)*3)*1000)//(snode data+ meta)* # of snode
 //#define SKIP_META (sizeof(uint64_t)*2*1024)//snode meta * # of snode + size of skiplist
-
 
 #ifndef NPRINTOPTION
 #define MT(t) measure_stamp((t))
@@ -54,12 +53,10 @@
 #define MP(t) donothing((t))
 #define MC(t) donothing((t))
 #endif
-
-#ifndef CPP
 #ifndef BOOL
 #define BOOL
-typedef enum{false,true} bool;
+#ifndef NOHOST
+//typedef enum{false,true} bool;
 #endif
 #endif
-
 #endif
