@@ -40,6 +40,7 @@ SRCS    :=\
 	measure.c\
 	ppa.cpp\
 	delete_set.c\
+	bloomfilter.c\
 
 
 OBJS    :=\
@@ -53,25 +54,32 @@ TARGETOBJ :=\
 
 all : LIBLSM
 
-LIBLSM : liblsm.a lsm_main.c
+bloomfilter: bloomfilter.c bloomfilter.h
+	g++ -DCPP -g -o bf_test bloomfilter.c
+
+test: liblsm.a test.c
+	$(CC) $(INCLUDES) $(CFLAGS) -o $@ test.c liblsm.a $(LIBS)
+
+LIBLSM : liblsm.a lsm_main.c 
 	$(CC) $(INCLUDES) $(CFLAGS) -o $@ lsm_main.c liblsm.a $(LIBS)
 
 liblsm.a: $(TARGETOBJ)
 	$(AR) r $(@) $(TARGETOBJ)
 
-.c.o    :
+.c.o    : 
 	$(CC) $(INCLUDES) $(CFLAGS) -c $< -o $@
 
 .cpp.o  :
 	$(CC) $(INCLUDES) $(CFLAGS) -c $< -o $@
 
-object/%.o: %.c
+object/%.o: %.c utils.h
 	$(CC) $(INCLUDES) $(CFLAGS) -c $< -o $@
 
-object/%.o: %.cpp
+object/%.o: %.cpp utils.h
 	$(CC) $(INCLUDES) $(CFLAGS) -c $< -o $@
 
 clean	:
 	@$(RM) object/*.o
 	@$(RM) liblsm.a
 	@$(RM) LIBLSM
+	@$(RM) *.o

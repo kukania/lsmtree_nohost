@@ -1,0 +1,45 @@
+==32462== Memcheck, a memory error detector
+==32462== Copyright (C) 2002-2015, and GNU GPL'd, by Julian Seward et al.
+==32462== Using Valgrind-3.11.0 and LibVEX; rerun with -h for copyright info
+==32462== Command: ./LIBLSM
+==32462== 
+==32462== Thread 3:
+==32462== Syscall param write(buf) points to uninitialised byte(s)
+==32462==    at 0x4E4A4BD: ??? (syscall-template.S:84)
+==32462==    by 0x40BE8C: skiplist_data_write(skiplist*, int, lsmtree_gc_req_t*) (skiplist.c:491)
+==32462==    by 0x40BA79: skiplist_write(skiplist*, lsmtree_gc_req_t*, int, int) (skiplist.c:411)
+==32462==    by 0x402104: write_data(lsmtree*, skiplist*, lsmtree_gc_req_t*) (lsmtree.cpp:51)
+==32462==    by 0x403074: compaction(lsmtree*, level*, level*, Entry*, lsmtree_gc_req_t*) (lsmtree.cpp:382)
+==32462==    by 0x404513: thread_gc_main(void*) (threading.cpp:198)
+==32462==    by 0x4E416B9: start_thread (pthread_create.c:333)
+==32462==    by 0x56F63DC: clone (clone.S:109)
+==32462==  Address 0x5e2f014 is 4 bytes inside a block of size 8,192 alloc'd
+==32462==    at 0x4C2DB8F: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==32462==    by 0x40164C: main (lsm_main.c:87)
+==32462== 
+==32462== 
+==32462== Process terminating with default action of signal 2 (SIGINT)
+==32462==    at 0x404DB3: std::operator&(std::memory_order, std::__memory_order_modifier) (atomic_base.h:81)
+==32462==    by 0x4050A5: load (atomic_base.h:392)
+==32462==    by 0x4050A5: spsc_bounded_queue_t<void*>::enqueue(void*) (lockfreeq.h:68)
+==32462==    by 0x404A66: threadset_gc_assign(threadset*, lsmtree_gc_req_t*) (threading.cpp:325)
+==32462==    by 0x4019F7: lr_gc_make_req(signed char) (LR_inter.cpp:86)
+==32462==    by 0x404845: thread_main(void*) (threading.cpp:276)
+==32462==    by 0x4E416B9: start_thread (pthread_create.c:333)
+==32462==    by 0x56F63DC: clone (clone.S:109)
+==32462== 
+==32462== HEAP SUMMARY:
+==32462==     in use at exit: 36,138,984 bytes in 20,508 blocks
+==32462==   total heap usage: 20,540 allocs, 32 frees, 36,183,880 bytes allocated
+==32462== 
+==32462== LEAK SUMMARY:
+==32462==    definitely lost: 0 bytes in 0 blocks
+==32462==    indirectly lost: 0 bytes in 0 blocks
+==32462==      possibly lost: 576 bytes in 2 blocks
+==32462==    still reachable: 36,138,408 bytes in 20,506 blocks
+==32462==         suppressed: 0 bytes in 0 blocks
+==32462== Rerun with --leak-check=full to see details of leaked memory
+==32462== 
+==32462== For counts of detected and suppressed errors, rerun with: -v
+==32462== Use --track-origins=yes to see where uninitialised values come from
+==32462== ERROR SUMMARY: 11 errors from 1 contexts (suppressed: 0 from 0)

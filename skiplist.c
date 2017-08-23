@@ -23,6 +23,7 @@ extern MeasureTime mt;
 extern pthread_mutex_t pl;
 extern pthread_mutex_t endR;
 extern delete_set* dset;
+extern KEYT DELETEDKEY;
 extern uint64_t *oob;
 #ifdef THREAD
 pthread_mutex_t dfd_lock;
@@ -32,6 +33,7 @@ snode *snode_init(snode *node){
 	for(int i=0; i<MAX_L; i++)
 		node->list[i]=NULL;
 	node->vflag=true;
+	node->req=NULL;
 	return node;
 }
 
@@ -124,6 +126,9 @@ int skiplist_delete(skiplist* list, KEYT key){
 	}
 
 	//free(x->value);
+	if(x->req!=NULL){
+		x->req->end_req(x->req);
+	}
 	free(x->list);
 	free(x);
 	list->size--;
@@ -143,20 +148,36 @@ snode *skiplist_insert(skiplist *list,KEYT key, char *value, lsmtree_req_t* req,
 	x=x->list[1];
 
 	if(key==x->key){
-		if(x->vflag && !flag){
+		if(x->vflag && !flag){ //delete
 			delete_ppa(dset,x->ppa);
-			if(x->req->req!=NULL){
+			if(x->req!=NULL && x->req->req!=NULL){
 #ifdef ENABLE_LIBFTL
 				memio_free_dma(1,x->req->req->dmaTag);	
+#else
+				free(x->req->req->value);
 #endif
 			}
-			skiplist_delete(list,key);
-			return NULL;
+			x->vflag=flag;
+			x->req=NULL;
+			x->value=NULL;
 		}
-		delete_ppa(dset,x->ppa);
-		x->vflag=flag;
-		x->value=value;
-		x->req=req;
+		else{ //update || write after delete
+			if(x->vflag){ //update
+				if(x->req!=NULL){
+#ifdef ENABLE_LIBFTL
+					memio_free_dma(1,x->req>req->dmaTag);
+#else
+					free(x->req->req->value);
+#endif
+				}
+				else{
+					delete_ppa(dset,x->ppa);
+				}
+			}
+			x->vflag=flag;
+			x->value=value;
+			x->req=req;
+		}
 		return x;
 	}
 	else{
@@ -172,9 +193,9 @@ snode *skiplist_insert(skiplist *list,KEYT key, char *value, lsmtree_req_t* req,
 		x->vflag=flag;
 		x->list=(snode**)malloc(sizeof(snode*)*(level+1));
 		x->key=key;
+		x->req=req;
 		if(value !=NULL){
 			x->value=value;
-			x->req=req;
 		}
 		for(int i=1; i<=level; i++){
 			x->list[i]=update[i]->list[i];
@@ -321,8 +342,9 @@ keyset *skiplist_keyset_find(sktable *t, KEYT key){
 	while(1){
 		if(start>end) return NULL;
 		if(start==end){
-			if(key==t->meta[mid].key)
+			if(key==t->meta[mid].key){
 				return &t->meta[mid];
+			}
 			else
 				return NULL;
 		}
@@ -397,8 +419,10 @@ KEYT skiplist_meta_write(skiplist *data,int fd, lsmtree_gc_req_t *req){
 	int i=0;
 	snode *temp=data->header->list[1];
 	KEYT temp_pp;
+	temp_pp=getPPA((void*)req);
 	for(int j=0;j<1; j++){
 		lsmtree_gc_req_t *temp_req=(lsmtree_gc_req_t*)malloc(sizeof(lsmtree_gc_req_t));
+		temp_req->isgc=true;
 		//printf("-----------------------%p\n",temp_req);
 		temp_req->type=LR_DW_T;
 #ifndef ENABLE_LIBFTL
@@ -411,6 +435,7 @@ KEYT skiplist_meta_write(skiplist *data,int fd, lsmtree_gc_req_t *req){
 		//temp_req->parent=req;
 		temp_req->end_req=lr_gc_end_req;
 		data->bitset=(uint8_t*)malloc(sizeof(uint8_t)*(KEYN/8));
+		memset(data->bitset,0,sizeof(uint8_t)*(KEYN/8));
 		for(int i=0; i<KEYN; i++){
 			int bit_n=i/8;
 			int offset=i%8;
@@ -421,9 +446,15 @@ KEYT skiplist_meta_write(skiplist *data,int fd, lsmtree_gc_req_t *req){
 			}
 			temp=temp->list[1];
 		}
+		//oob
+		uint64_t temp_oob=0;
+		KEYSET(temp_oob,temp_req->keys[i].key);
+		LEVELSET(temp_oob,req->flag);
+		FLAGSET(temp_oob,0);
+		oob[temp_pp]=temp_oob;
 #ifndef ENABLE_LIBFTL
 		pthread_mutex_lock(&dfd_lock);
-		if(lseek64(fd,((off64_t)PAGESIZE)*(getPPA()),SEEK_SET)==-1)
+		if(lseek64(fd,((off64_t)PAGESIZE)*temp_pp,SEEK_SET)==-1)
 			printf("lseek error in meta read!\n");
 		write(fd,temp_req->keys,PAGESIZE);
 		pthread_mutex_unlock(&dfd_lock);
@@ -431,15 +462,7 @@ KEYT skiplist_meta_write(skiplist *data,int fd, lsmtree_gc_req_t *req){
 #else	
 		temp_req->seq_number=seq_number++;
 		temp_req->isgc=true;
-		//oob
-		uint64_t temp_oob=0;
-		KEYSET(temp_oob,temp_req->keys[i].key);
-		LEVELSET(temp_oob,req->flag);
-		FLAGSET(temp_oob,0);
-		temp_pp=getPPA();
-		oob[temp_pp]=temp_oob;
 		memio_write(mio,temp_pp,(uint64_t)(PAGESIZE),(uint8_t*)temp_req->keys,1,(void*)temp_req,temp_req->dmatag);
-
 #endif
 	}
 	return temp_pp;
@@ -452,13 +475,15 @@ KEYT skiplist_data_write(skiplist *data,int fd,lsmtree_gc_req_t * req){
 	//MS(&mt);
 	while(temp!=data->header){
 		child_req=temp->req;
-		if(req->type!=LR_DELETE_T){
-			child_req->type=LR_DDW_T;
-		}
 		child_req->end_req=lr_end_req;
 		//	child_req->parent=(lsmtree_req_t*)req;
 		if(temp->vflag){
-			KEYT temp_p=getPPA();
+			KEYT temp_p=getPPA((void*)req);
+			uint64_t temp_oob=0;
+			KEYSET(temp_oob,temp->key);
+			LEVELSET(temp_oob,req->flag);
+			FLAGSET(temp_oob,1);
+			oob[temp_p]=temp_oob;
 			temp->ppa=temp_p;
 #ifndef ENABLE_LIBFTL
 			pthread_mutex_lock(&dfd_lock);
@@ -471,12 +496,13 @@ KEYT skiplist_data_write(skiplist *data,int fd,lsmtree_gc_req_t * req){
 #else
 			child_req->seq_number=seq_number++;
 			child_req->isgc=false;
-			uint64_t temp_oob=0;
-			KEYSET(temp_oob,temp->key);
-			LEVELSET(temp_oob,req->flag);
-			FLAGSET(temp_oob,1);
-			oob[temp_p]=temp_oob;
 			memio_write(mio,temp_p,(uint64_t)(PAGESIZE),(uint8_t*)temp->value,1,(void*)child_req,child_req->req->dmaTag);
+#endif
+		}
+		else{
+			temp->ppa=DELETEDKEY;
+#ifndef ENABLE_LIBFTL
+			child_req->end_req(child_req);
 #endif
 		}
 		temp=temp->list[1];
@@ -487,6 +513,7 @@ KEYT skiplist_data_write(skiplist *data,int fd,lsmtree_gc_req_t * req){
 void skiplist_sk_data_write(sktable *sk, int fd, lsmtree_gc_req_t *req){
 	for(int i=0; i<KEYN; i++){
 		lsmtree_gc_req_t *temp=(lsmtree_gc_req_t *)malloc(sizeof(lsmtree_gc_req_t));
+		temp->end_req=lr_gc_end_req;
 		char *temp_p;
 #ifdef ENABLE_LIBFTL
 		temp->dmatag=memio_alloc_dma(1,&temp_p);
@@ -498,7 +525,7 @@ void skiplist_sk_data_write(sktable *sk, int fd, lsmtree_gc_req_t *req){
 		temp->req=NULL;
 		temp->type=LR_DDW_T;
 		delete_ppa(dset,sk->meta[i].ppa);
-		KEYT temp_pp=getPPA();
+		KEYT temp_pp=getPPA((void*)req);
 		sk->meta[i].ppa=temp_pp;
 		uint64_t temp_oob=0;
 		KEYSET(temp_oob,sk->meta[i].key);
@@ -508,7 +535,9 @@ void skiplist_sk_data_write(sktable *sk, int fd, lsmtree_gc_req_t *req){
 #ifdef ENABLE_LIBFTL
 		memio_write(mio,temp_pp,(uint64_t)PAGESIZE,(uint8_t*)temp_p,1,(void*)temp,temp->dmatag);
 #else
-		//lseek write...
+		lseek64(fd,((off64_t)PAGESIZE)*temp_pp,SEEK_SET);
+		write(fd,temp_p,PAGESIZE);
+		temp->end_req(temp);
 #endif
 	}
 }

@@ -3,7 +3,9 @@
 #include"lsm_cache.h"
 #include"utils.h"
 #include"threading.h"
-#ifndef NDMA
+#include"delete_set.h"
+#include"ppa.h"
+#ifndef ENABLE_LIBFTL
 #include"libmemio.h"
 #endif
 #include<sys/types.h>
@@ -42,6 +44,8 @@ extern int pros_hit2;
 extern int cache_hit;
 extern int mem_hit;
 extern lsmtree *LSM;
+extern delete_set *dset;
+extern std::queue<KEYT> ppa;
 KEYT *keys;
 int cnnt=0;
 bool utils_flag;
@@ -64,7 +68,7 @@ int main(){
 	measure_start(&mt);
 	keys=(KEYT*)malloc(sizeof(KEYT)*INPUTSIZE);
 	for(int i=0; i<INPUTSIZE; i++){
-		keys[i]=rand()%INT_MAX+1;
+		keys[i]=rand()+1;
 	}
 	int cnt=1;
 	for(int i=1; i<=INPUTSIZE; i++){
@@ -90,15 +94,24 @@ int main(){
 	threadset_request_wait(&processor);
 	threadset_gc_wait(&processor);
 	measure_end(&mt,"write_wait");
-	
-	for(int i=0; i<INPUTSIZE/2; i++){
+	printf("write end!!\n");
+	printf("%u\n",ppa.front());
+	for(int i=0; i<INPUTSIZE; i++){
 		req=(req_t *)malloc(sizeof(req_t));
-		req->key=rand()%INPUTSIZE;
+		req->key=i+1;
+		req->value=NULL;
 		req->type=3;
 		lr_make_req(req);
 	}
+	threadset_request_wait(&processor);
+	threadset_gc_wait(&processor);
+	printf("delete end!!\n");
+	printf("%u\n",ppa.front());
+	while(delete_trim_process(dset)){
+		printf("deleted!\n");
+	}
+	//sleep(10);
 
-/*
 	pthread_t thr;
 	processor.threads[0].flag=0;
 	//pthread_create(&thr,NULL,util_check,NULL);
@@ -109,8 +122,6 @@ int main(){
 		req=(req_t*)malloc(sizeof(req_t));
 		req->type=2;
 		utils_flag=true;
-		//if(i%1024==0)
-			//printf("%d throw\n",i);
 		if(SEQUENCE==0){
 			key=keys[i-1];
 		}
@@ -119,7 +130,7 @@ int main(){
 		}
 		req->key=key;
 		key=i;
-#ifndef NDMA
+#ifdef ENABLE_LIBFTL
 		//printf("main_alloc!\n");
 		req->dmaTag=memio_alloc_dma(req->type,&req->value);
 #else
@@ -144,7 +155,7 @@ int main(){
 //	printf("readtime:%.6f\n",(float)rt.adding.tv_usec/1000000);
 //	printf("wt:%.6f\n",(float)wt->adding.tv_usec/1000000);
 //	printf("at:%.6f\n",(float)at->adding.tv_usec/1000000);
-*/	
+
 /*
 	printf("1>>max:%ld sec and %.6f\n",max_time1.tv_sec,(float)max_time1.tv_usec/1000000);
 	printf("1>>over time (%d): %d\n",INPUTSIZE,big_time_check1);

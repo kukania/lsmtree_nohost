@@ -5,15 +5,11 @@
 #include<unistd.h>
 #include"measure.h"
 #define KEYT uint32_t
-#define FILTERSIZE (1000*6)
-#define FILTERFUNC 5
-#define FILTERBIT ((1000*6)/8)
-
 #define KEYN 1024
 #define PAGESIZE (8192)
 #define MUL 24
 #define LEVELN 5
-#define INPUTSIZE (1024*256)
+#define INPUTSIZE (1024*20)
 #define BUSYPOINT 0.7
 #define THREADQN 1024
 #define THREADNUM 1
@@ -25,7 +21,7 @@
 #define ENDMERGE 0.5
 #define MAXC 10
 #define MAXNODE 250000
-#define SEQUENCE 1
+#define SEQUENCE 0
 #define READTEST
 #define GETTEST
 
@@ -35,13 +31,12 @@
 #define WAITMETAN	128
 
 #define PAGENUM (4096)
-#define SEGNUM  (32*4) 
-#define MAXPAGE (32*4*4096) //1G=32*4096
+#define SEGNUM  (2*32) 
+#define MAXPAGE (2*32*4096) //1G=32*4096
 
 #define SNODE_SIZE (8192)
-//#define SKIP_BLOCK ((4096+sizeof(int)*3)*1000)//(snode data+ meta)* # of snode
-//#define SKIP_META (sizeof(uint64_t)*2*1024)//snode meta * # of snode + size of skiplist
 
+#define RAF 2
 
 #ifndef NPRINTOPTION
 #define MT(t) measure_stamp((t))
@@ -59,7 +54,7 @@
 #endif
 #ifndef BOOL
 #define BOOL
-#ifndef NOHOST
+#ifndef CPP
 typedef enum{false,true} bool;
 #endif
 #endif

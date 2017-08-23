@@ -71,10 +71,7 @@ int8_t lr_gc_make_req(int8_t t_num){
 	pthread_mutex_unlock(&mem_lock);
 	
 	gc_req=(lsmtree_gc_req_t*)malloc(sizeof(lsmtree_gc_req_t));
-	if(!t_num)
-		gc_req->type=LR_FLUSH_T;
-	else
-		gc_req->type=LR_GC_T;
+	gc_req->type=LR_FLUSH_T;
 
 	pthread_mutex_lock(&gc_cnt_lock);
 	gc_end_check++;
@@ -100,6 +97,9 @@ int8_t lr_make_req(req_t *r){
 #endif
 			case 3:
 				th_req->type=LR_DELETE_T;
+				pthread_mutex_lock(&write_check_lock);
+				write_end_check++;
+				pthread_mutex_unlock(&write_check_lock);
 				break;
 			case 1://set
 				pthread_mutex_lock(&write_check_lock);
@@ -162,6 +162,7 @@ int8_t lr_end_req(lsmtree_req_t *r){
 #else
 			free(r->data);
 #endif
+			pthread_mutex_unlock(&r->meta_lock);
 			break;
 		case LR_DELETE_R:
 			memcpy(r->res,r->data,PAGESIZE);

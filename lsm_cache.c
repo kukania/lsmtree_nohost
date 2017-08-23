@@ -59,6 +59,7 @@ keyset* cache_level_find(lsm_cache* input,int l,KEYT k){
 		if(input->caches[l][j].content->meta[0].key > k || input->caches[l][j].content->meta[KEYN-1].key < k)
 			continue;
 		res=skiplist_keyset_find(input->caches[l][j].content,k);
+
 		if(res!=NULL) {
 			input->caches[l][j].check_bit=input->time_bit++;
 			input->caches[l][j].hit++;

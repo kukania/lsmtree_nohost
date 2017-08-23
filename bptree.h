@@ -12,6 +12,7 @@ typedef struct Entry{
 	KEYT version;
 	KEYT end;
 	KEYT pbn;
+	bool gc_cache;
 	uint8_t *bitset;
 	struct Node *parent;
 }Entry;

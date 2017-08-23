@@ -36,6 +36,7 @@ Entry *make_entry(KEYT key,KEYT end,KEYT pbn1){
 		sleep(10);
 	res->version=0;
 	res->parent=NULL;
+	res->gc_cache=false;
 	return res;
 }
 Entry *level_entry_copy(Entry *input){
@@ -70,8 +71,11 @@ level *level_init(level* input, int size){
 
 Node *level_find_leafnode(level *lev, KEYT key){
 	Node *temp=lev->root;
+	if(temp==NULL) return NULL;
 	while(!temp->leaf){
 		temp=binary_search_node(temp,key);
+		if(temp==NULL)
+			break;
 	}
 	return temp;
 }
@@ -112,7 +116,10 @@ Entry **level_range_find(level *lev, KEYT start, KEYT end){
 			res[idx++]=temp;
 		}
 		else if(startingFlag){
-			res[idx++]=temp;
+			if(!(temp->end < start || temp->key > end))
+				res[idx++]=temp;
+			else
+				break;
 		}
 		if(cnt <startN->count){
 			temp=startN->children[cnt++].entry;
@@ -152,23 +159,21 @@ Entry *level_get_victim(level *lev){
 	return res;
 }
 Iter* level_get_Iter(level *lev){
-	Iter *res=(Iter*)malloc(Iter);
+	Iter *res=(Iter*)malloc(sizeof(Iter));
 	res->now=level_find_leafnode(lev,0);
-	res->entry=res->now->children[0].entry;
-	res->idx=-1;
+	res->idx=0;
 	return res;
 }
 
 Entry *level_get_next(Iter *input){
 	if(input->idx<input->now->count){
-		input->idx++;
-		return input->now->children[input->idx].entry;
+		return input->now->children[input->idx++].entry;
 	}
 	else{
 		input->now=input->now->children[MAXC].node;
 		if(input->now==NULL) return NULL;
 		input->idx=0;
-		return input->now->children[input->idx].entry;
+		return input->now->children[input->idx++].entry;
 	}
 }
 
@@ -246,7 +251,7 @@ Node *level_insert(level* lev, Entry *entry){
 	if(lev->start>entry->key)
 		lev->start=entry->key;
 	if(lev->end<entry->end)
-		lev->start=entry->end;
+		lev->end=entry->end;
 	Node *temp=level_find_leafnode(lev,entry->key);
 	if(entry->version==0) entry->version=lev->version++;
 	if(temp->count==0){

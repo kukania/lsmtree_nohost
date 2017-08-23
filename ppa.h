@@ -3,6 +3,6 @@
 #include<queue>
 #include"utils.h"
 void initPPA();
-KEYT getPPA();
+KEYT getPPA(void *);
 void freePPA(KEYT);
 #endif
