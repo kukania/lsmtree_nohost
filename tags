@@ -5,35 +5,36 @@
 !_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
 !_TAG_PROGRAM_VERSION	5.9~svn20110310	//
 BDBM	Makefile	/^BDBM = ..\/bdbm_drv$/;"	m
-BOOL	utils.h	61;"	d
+BF	bloomfilter.h	/^}BF;$/;"	t	typeref:struct:__anon7
+BITGET	bloomfilter.h	/^inline bool BITGET(char input, char offset){$/;"	f
+BITSET	bloomfilter.h	/^inline void BITSET(char &input, char offset){$/;"	f
+BOOL	utils.h	57;"	d
 BUFFER_READ	LR_inter.h	15;"	d
-BUSYPOINT	utils.h	17;"	d
-CACHENUM	utils.h	32;"	d
-CACHETH	utils.h	33;"	d
+BUSYPOINT	utils.h	13;"	d
+CACHENUM	utils.h	28;"	d
+CACHETH	utils.h	29;"	d
 CC	Makefile	/^CC=${HOST}-g++ -D_FILE_OFFSET_BITS=64$/;"	m
 Child	bptree.h	/^typedef union Child{$/;"	u
 Child	bptree.h	/^}Child;$/;"	t	typeref:union:Child
+DELETEDKEY	ppa.cpp	/^KEYT DELETEDKEY;$/;"	v
 DISK_READ_T	LR_inter.h	16;"	d
-ENDMERGE	utils.h	25;"	d
+ENDMERGE	utils.h	21;"	d
 Entry	bptree.h	/^typedef struct Entry{$/;"	s
 Entry	bptree.h	/^}Entry;$/;"	t	typeref:struct:Entry
-FILTERBIT	utils.h	10;"	d
-FILTERFUNC	utils.h	9;"	d
-FILTERSIZE	utils.h	8;"	d
 FLAGGET	delete_set.h	/^inline bool FLAGGET(uint64_t &des){$/;"	f
-FLAGS	lsm_main.c	48;"	d	file:
+FLAGS	lsm_main.c	52;"	d	file:
 FLAGSET	delete_set.h	/^inline uint64_t FLAGSET(uint64_t &des, bool flag){$/;"	f
-GETTEST	utils.h	30;"	d
+FPR	utils.h	40;"	d
+GETTEST	utils.h	26;"	d
 INCLUDES	Makefile	/^INCLUDES :=     -I$(PWD) \\$/;"	m
-INPUTSIZE	utils.h	16;"	d
+INPUTSIZE	utils.h	12;"	d
 Iter	bptree.h	/^}Iter;$/;"	t	typeref:struct:iterator
 KEYGET	delete_set.h	/^inline uint64_t KEYGET(uint64_t des){$/;"	f
-KEYN	utils.h	12;"	d
+KEYN	utils.h	8;"	d
 KEYSET	delete_set.h	/^inline uint64_t KEYSET(uint64_t &des,uint32_t src){$/;"	f
 KEYT	utils.h	7;"	d
 LEVELGET	delete_set.h	/^inline uint64_t LEVELGET(uint64_t des){$/;"	f
-LEVELN	utils.h	15;"	d
-LEVELSET	delete_set.h	/^inline uint64_t LEVELSET(uint64_t& des, int level){$/;"	f
+LEVELN	utils.h	11;"	d
 LIBS	Makefile	/^LIBS    :=\\$/;"	m
 LR_COMP_T	LR_inter.h	18;"	d
 LR_DDR_T	LR_inter.h	23;"	d
@@ -50,42 +51,44 @@ LR_GC_T	LR_inter.h	20;"	d
 LR_READ_T	LR_inter.h	14;"	d
 LR_WRITE_T	LR_inter.h	17;"	d
 LSM	LR_inter.cpp	/^lsmtree *LSM;$/;"	v
-MA	utils.h	53;"	d
-MAXC	utils.h	26;"	d
-MAXNODE	utils.h	27;"	d
-MAXPAGE	utils.h	39;"	d
+MA	utils.h	49;"	d
+MAXC	utils.h	22;"	d
+MAXNODE	utils.h	23;"	d
+MAXPAGE	utils.h	35;"	d
 MAX_L	skiplist.h	3;"	d
-MC	utils.h	51;"	d
-MC	utils.h	58;"	d
-ME	utils.h	49;"	d
-ME	utils.h	56;"	d
-MP	utils.h	50;"	d
-MP	utils.h	57;"	d
-MR	utils.h	52;"	d
-MS	utils.h	48;"	d
-MS	utils.h	55;"	d
-MT	utils.h	47;"	d
-MUL	utils.h	14;"	d
+MC	utils.h	47;"	d
+MC	utils.h	54;"	d
+ME	utils.h	45;"	d
+ME	utils.h	52;"	d
+MP	utils.h	46;"	d
+MP	utils.h	53;"	d
+MR	utils.h	48;"	d
+MS	utils.h	44;"	d
+MS	utils.h	51;"	d
+MT	utils.h	43;"	d
+MUL	utils.h	10;"	d
 MeasureTime	measure.h	/^typedef struct MeasureTime{$/;"	s
 MeasureTime	measure.h	/^}MeasureTime;$/;"	t	typeref:struct:MeasureTime
 Node	bptree.h	/^typedef struct Node{$/;"	s
 Node	bptree.h	/^}Node;$/;"	t	typeref:struct:Node
 OBJS	Makefile	/^OBJS    :=\\$/;"	m
 OBJS	Makefile	/^OBJS :=\\$/;"	m
-PAGENUM	utils.h	37;"	d
-PAGESIZE	utils.h	13;"	d
-READTEST	utils.h	29;"	d
-SEGNUM	utils.h	38;"	d
-SEQUENCE	utils.h	28;"	d
-SNODE_SIZE	utils.h	41;"	d
+PAGENUM	utils.h	33;"	d
+PAGESIZE	utils.h	9;"	d
+RAF	utils.h	39;"	d
+READTEST	utils.h	25;"	d
+SEGNUM	utils.h	34;"	d
+SEQUENCE	utils.h	24;"	d
+SNODE_SIZE	utils.h	37;"	d
 SRCS	Makefile	/^SRCS    :=\\$/;"	m
-STARTMERGE	utils.h	24;"	d
+STARTMERGE	utils.h	20;"	d
 TARGETOBJ	Makefile	/^TARGETOBJ :=\\$/;"	m
-THREAD	utils.h	20;"	d
-THREADNUM	utils.h	19;"	d
-THREADQN	utils.h	18;"	d
-WAITMETAN	utils.h	35;"	d
-WAITREQN	utils.h	34;"	d
+THREAD	utils.h	16;"	d
+THREADNUM	utils.h	15;"	d
+THREADQN	utils.h	14;"	d
+WAITMETAN	utils.h	31;"	d
+WAITREQN	utils.h	30;"	d
+__BLOOM_H__	bloomfilter.h	2;"	d
 __BP__HEADER__	bptree.h	2;"	d
 __CACHE_H__	lsm_cache.h	2;"	d
 __DELETE_H__	delete_set.h	2;"	d
@@ -122,6 +125,11 @@ aligned_node_t	lfmpmc.h	/^		typedef typename std::aligned_storage<sizeof(node_t)
 aligned_t	lockfreeq.h	/^		typedef typename std::aligned_storage<sizeof(T), std::alignment_of<T>::value>::type aligned_t;$/;"	t	class:spsc_bounded_queue_t
 all_hit	lsm_cache.h	/^	int all_hit;$/;"	m	struct:__anon5
 at	threading.cpp	/^MeasureTime *at;$/;"	v
+bf_bits	bloomfilter.c	/^uint64_t bf_bits(int entry, double fpr){$/;"	f
+bf_check	bloomfilter.c	/^bool bf_check(BF* input, KEYT key){$/;"	f
+bf_free	bloomfilter.c	/^void bf_free(BF *input){$/;"	f
+bf_init	bloomfilter.c	/^BF* bf_init(int entry, double fpr){$/;"	f
+bf_set	bloomfilter.c	/^void bf_set(BF *input, KEYT key){$/;"	f
 big_time_check	LR_inter.cpp	/^int big_time_check;$/;"	v
 binary_search_node	bptree.c	/^Node* binary_search_node(Node *node, KEYT key){$/;"	f
 bitset	bptree.h	/^	uint8_t *bitset;$/;"	m	struct:Entry
@@ -129,6 +137,7 @@ bitset	delete_set.h	/^	uint8_t bitset[PAGENUM\/8];$/;"	m	struct:__anon2
 bitset	skiplist.h	/^	uint8_t *bitset;$/;"	m	struct:skiplist
 block	delete_set.h	/^}block;$/;"	t	typeref:struct:__anon2
 blocks	delete_set.h	/^	block blocks[SEGNUM];$/;"	m	struct:__anon3
+body	bloomfilter.h	/^	char *body;$/;"	m	struct:__anon7
 bool	utils.h	/^typedef enum{false,true} bool;$/;"	t	typeref:enum:__anon1
 bp	lsmtree.cpp	/^MeasureTime bp;$/;"	v
 buf	lsmtree.cpp	/^MeasureTime buf;$/;"	v
@@ -139,14 +148,18 @@ buffer	lsmtree.h	/^}buffer;$/;"	t	typeref:struct:buffer
 buffer_free	lsmtree.cpp	/^void buffer_free(buffer *buf){$/;"	f
 cache	lsm_cache.h	/^}cache;$/;"	t	typeref:struct:__anon4
 cache_clear	lsm_cache.c	/^void cache_clear(lsm_cache *input){$/;"	f
+cache_entry	delete_set.h	/^	Entry *cache_entry;$/;"	m	struct:__anon3
 cache_hit	lsmtree.cpp	/^int cache_hit;$/;"	v
 cache_hit	threading.h	/^	int cache_hit;$/;"	m	struct:threading
 cache_init	lsm_cache.c	/^void cache_init(lsm_cache *input){$/;"	f
 cache_input	lsm_cache.c	/^void cache_input(lsm_cache* input,int l,sktable* sk,int tag){$/;"	f
+cache_level	delete_set.h	/^	int cache_level;$/;"	m	struct:__anon3
 cache_level_find	lsm_cache.c	/^keyset* cache_level_find(lsm_cache* input,int l,KEYT k){$/;"	f
 cache_line_pad_t	lfmpmc.h	/^		typedef char cache_line_pad_t[64]; \/\/ it's either 32 or 64 so 64 is good enough$/;"	t	class:mpmc_bounded_queue_t
 cache_line_pad_t	lockfreeq.h	/^		typedef char cache_line_pad_t[64];$/;"	t	class:spsc_bounded_queue_t
+cache_pbn	delete_set.h	/^	KEYT cache_pbn;$/;"	m	struct:__anon3
 cache_summary	lsm_cache.c	/^void cache_summary(lsm_cache* input){$/;"	f
+cache_table	delete_set.h	/^	sktable *cache_table;$/;"	m	struct:__anon3
 caches	lsm_cache.h	/^	cache caches[LEVELN][CACHENUM];$/;"	m	struct:__anon5
 call	measure.h	/^	int call;$/;"	m	struct:MeasureTime
 check_bit	lsm_cache.h	/^	uint64_t check_bit;$/;"	m	struct:__anon4
@@ -164,13 +177,14 @@ data	LR_inter.h	/^	char *data;$/;"	m	struct:lsmtree_req_t
 data	lfmpmc.h	/^			T                     data;$/;"	m	struct:mpmc_bounded_queue_t::node_t
 data	lsmtree.h	/^	sktable *data;$/;"	m	struct:buffer
 debug_m	threading.h	/^	pthread_mutex_t debug_m;$/;"	m	struct:threadset
+delete_change_cache	delete_set.c	/^void delete_change_cache(delete_set *set, Entry *entry, sktable *data,int level){$/;"	f
 delete_free	delete_set.c	/^void delete_free(delete_set *set){$/;"	f
 delete_get_victim	delete_set.c	/^int delete_get_victim(delete_set *set){$/;"	f
 delete_init	delete_set.c	/^void delete_init(delete_set *set){$/;"	f
 delete_make_req	delete_set.c	/^lsmtree_req_t * delete_make_req(bool iswrite){$/;"	f
 delete_ppa	delete_set.c	/^void delete_ppa(delete_set *set,KEYT input){$/;"	f
 delete_set	delete_set.h	/^}delete_set;$/;"	t	typeref:struct:__anon3
-delete_trim_process	delete_set.c	/^void delete_trim_process(delete_set *set){$/;"	f
+delete_trim_process	delete_set.c	/^int delete_trim_process(delete_set *set){$/;"	f
 depth	bptree.h	/^	int depth;$/;"	m	struct:level
 dequeue	lfmpmc.h	/^			dequeue($/;"	f	class:mpmc_bounded_queue_t
 dequeue	lockfreeq.h	/^			dequeue($/;"	f	class:spsc_bounded_queue_t
@@ -200,14 +214,19 @@ enqueue	lfmpmc.h	/^			enqueue($/;"	f	class:mpmc_bounded_queue_t
 enqueue	lockfreeq.h	/^			enqueue($/;"	f	class:spsc_bounded_queue_t
 entry	bptree.h	/^	struct Entry *entry;$/;"	m	union:Child	typeref:struct:Child::Entry
 entry	threading.h	/^	Entry *entry[WAITREQN];$/;"	m	struct:threading
+erased	delete_set.h	/^	bool erased;$/;"	m	struct:__anon2
 errcnt	threading.h	/^	int errcnt;$/;"	m	struct:threadset
 false	utils.h	/^typedef enum{false,true} bool;$/;"	e	enum:__anon1
+filter	bptree.h	/^	BF *filter;$/;"	m	struct:Entry
+filter	skiplist.h	/^	BF *filter;$/;"	m	struct:skiplist
 find	lsmtree.cpp	/^MeasureTime find;$/;"	v
 flag	LR_inter.h	/^	uint8_t flag;$/;"	m	struct:lsmtree_gc_req_t
 flag	LR_inter.h	/^	uint8_t flag;$/;"	m	struct:lsmtree_req_t
 flag	threading.h	/^	int flag;$/;"	m	struct:threading
+fpr	bptree.h	/^	double fpr;$/;"	m	struct:level
 freePPA	ppa.cpp	/^void freePPA(KEYT in){$/;"	f
 free_entry	bptree.c	/^void free_entry(Entry *entry){$/;"	f
+gc_cache	bptree.h	/^	bool gc_cache;$/;"	m	struct:Entry
 gc_cnt_lock	LR_inter.cpp	/^pthread_mutex_t gc_cnt_lock;$/;"	v
 gc_cond	threading.h	/^	pthread_cond_t gc_cond;$/;"	m	struct:threadset
 gc_end_check	threading.cpp	/^int gc_end_check;$/;"	v
@@ -217,8 +236,9 @@ gc_parent	LR_inter.h	/^	struct lsmtree_gc_req_t *gc_parent;$/;"	m	struct:lsmtree
 gc_q	threading.h	/^	spsc_bounded_queue_t<void *>* gc_q;$/;"	m	struct:threadset
 gc_thread	threading.h	/^	threading gc_thread;$/;"	m	struct:threadset
 getLevel	skiplist.c	/^static int getLevel(){$/;"	f	file:
-getPPA	ppa.cpp	/^KEYT getPPA(){$/;"	f
+getPPA	ppa.cpp	/^KEYT getPPA(void *req){$/;"	f
 gt	threading.cpp	/^MeasureTime gt;$/;"	v
+hashfunction	bloomfilter.c	/^KEYT hashfunction(KEYT key){$/;"	f
 header	measure.h	/^	linktime *header;$/;"	m	struct:MeasureTime
 header	skiplist.h	/^	snode *header;$/;"	m	struct:skiplist
 header_read	threading.h	/^	int header_read;$/;"	m	struct:threading
@@ -235,6 +255,7 @@ isempty	lockfreeq.h	/^		bool isempty(){$/;"	f	class:spsc_bounded_queue_t
 isgc	LR_inter.h	/^	bool isgc;$/;"	m	struct:lsmtree_gc_req_t
 isgc	LR_inter.h	/^	bool isgc;$/;"	m	struct:lsmtree_req_t
 iterator	bptree.h	/^typedef struct iterator{$/;"	s
+k	bloomfilter.h	/^	int k;$/;"	m	struct:__anon7
 key	LR_inter.h	/^	uint64_t key;$/;"	m	struct:req_t
 key	bptree.h	/^	KEYT key;$/;"	m	struct:Entry
 key	skiplist.h	/^	KEYT key;$/;"	m	struct:keyset
@@ -293,11 +314,13 @@ lsmtree_gc_req_t	skiplist.h	/^typedef struct lsmtree_gc_req_t lsmtree_gc_req_t;$
 lsmtree_req_t	LR_inter.h	/^typedef struct lsmtree_req_t{$/;"	s
 lsmtree_req_t	LR_inter.h	/^}lsmtree_req_t;$/;"	t	typeref:struct:lsmtree_req_t
 lsmtree_req_t	skiplist.h	/^typedef struct lsmtree_req_t lsmtree_req_t;$/;"	t	typeref:struct:lsmtree_req_t
+m	bloomfilter.h	/^	int m;$/;"	m	struct:__anon7
 m_size	bptree.h	/^	int m_size;$/;"	m	struct:level
 main	bptree.c	/^int main(){$/;"	f
 main	lsm_main.c	/^int main(){$/;"	f
 main	measure.c	/^int main(){$/;"	f
 main	skiplist.c	/^int main(){$/;"	f
+main	test.c	/^int main(){$/;"	f
 make_cnt	LR_inter.cpp	/^int make_cnt=1;$/;"	v
 make_entry	bptree.c	/^Entry *make_entry(KEYT key,KEYT end,KEYT pbn1){$/;"	f
 mas	LR_inter.cpp	/^MeasureTime mas;$/;"	v
@@ -330,6 +353,7 @@ mt	LR_inter.h	/^	MeasureTime mt;$/;"	m	struct:lsmtree_gc_req_t
 mt	LR_inter.h	/^	MeasureTime mt;$/;"	m	struct:lsmtree_req_t
 mycache	threading.h	/^	lsm_cache mycache;$/;"	m	struct:threadset
 mylist	skiplist.h	/^	skiplist *mylist;$/;"	m	struct:skIterator
+n	bloomfilter.h	/^	int n;$/;"	m	struct:__anon7
 next	measure.h	/^	struct linktime * next;$/;"	m	struct:linktime	typeref:struct:linktime::linktime
 node	bptree.h	/^	struct Node *node;$/;"	m	union:Child	typeref:struct:Child::Node
 node_init	bptree.c	/^Node *node_init(Node *node){$/;"	f
@@ -344,6 +368,7 @@ number	threading.h	/^	int number;$/;"	m	struct:threading
 oob	delete_set.c	/^uint64_t *oob;$/;"	v
 operator =	lfmpmc.h	/^		void operator=(const mpmc_bounded_queue_t&) {}$/;"	f	class:mpmc_bounded_queue_t
 operator =	lockfreeq.h	/^		void operator=(const spsc_bounded_queue_t&) {}$/;"	f	class:spsc_bounded_queue_t
+p	bloomfilter.h	/^	double p;$/;"	m	struct:__anon7
 params	LR_inter.h	/^	void *params[4];$/;"	m	struct:lsmtree_gc_req_t
 params	LR_inter.h	/^	void *params[4];$/;"	m	struct:lsmtree_req_t
 parent	LR_inter.h	/^	struct lsmtree_gc_req_t *parent;$/;"	m	struct:lsmtree_gc_req_t	typeref:struct:lsmtree_gc_req_t::lsmtree_gc_req_t
@@ -351,10 +376,12 @@ parent	LR_inter.h	/^	struct lsmtree_req_t *parent;$/;"	m	struct:lsmtree_req_t	ty
 parent	bptree.h	/^	struct Node *parent;$/;"	m	struct:Entry	typeref:struct:Entry::Node
 parent	bptree.h	/^	struct Node *parent;$/;"	m	struct:Node	typeref:struct:Node::Node
 pbn	bptree.h	/^	KEYT pbn;$/;"	m	struct:Entry
+physical_gc_lock	ppa.cpp	/^pthread_mutex_t physical_gc_lock;$/;"	v
 pl	LR_inter.cpp	/^pthread_mutex_t pl;$/;"	v
 ppa	ppa.cpp	/^std::queue<KEYT> ppa;$/;"	v
 ppa	skiplist.h	/^	KEYT ppa;$/;"	m	struct:keyset
 ppa	skiplist.h	/^	KEYT ppa;$/;"	m	struct:snode
+ppa2	ppa.cpp	/^KEYT ppa2;$/;"	v
 pre_req	threading.h	/^	lsmtree_req_t *pre_req[WAITREQN];$/;"	m	struct:threading
 print_lock	LR_inter.cpp	/^pthread_mutex_t print_lock;$/;"	v
 processor	LR_inter.cpp	/^threadset processor;$/;"	v
@@ -410,12 +437,12 @@ skiplist_keyset_read_c	skiplist.c	/^bool skiplist_keyset_read_c(keyset *k,char *
 skiplist_meta_free	skiplist.c	/^void skiplist_meta_free(skiplist *list){$/;"	f
 skiplist_meta_read_c	skiplist.c	/^sktable *skiplist_meta_read_c(KEYT pbn, int fd,int seq,lsmtree_gc_req_t *req){$/;"	f
 skiplist_meta_read_n	skiplist.c	/^sktable *skiplist_meta_read_n(KEYT pbn, int fd,int seq,lsmtree_req_t *req){$/;"	f
-skiplist_meta_write	skiplist.c	/^KEYT skiplist_meta_write(skiplist *data,int fd, lsmtree_gc_req_t *req){$/;"	f
+skiplist_meta_write	skiplist.c	/^KEYT skiplist_meta_write(skiplist *data,int fd, lsmtree_gc_req_t *req,double fpr){$/;"	f
 skiplist_pop	skiplist.c	/^snode *skiplist_pop(skiplist *list){$/;"	f
 skiplist_read	skiplist.c	/^sktable *skiplist_read(KEYT pbn, int hfd, int dfd){$/;"	f
 skiplist_sk_data_write	skiplist.c	/^void skiplist_sk_data_write(sktable *sk, int fd, lsmtree_gc_req_t *req){$/;"	f
 skiplist_sktable_free	skiplist.c	/^void skiplist_sktable_free(sktable *f){$/;"	f
-skiplist_write	skiplist.c	/^KEYT skiplist_write(skiplist *data, lsmtree_gc_req_t * req,int hfd,int dfd){$/;"	f
+skiplist_write	skiplist.c	/^KEYT skiplist_write(skiplist *data, lsmtree_gc_req_t * req,int hfd,int dfd,double fpr){$/;"	f
 sktable	LR_inter.h	/^typedef struct sktable sktable;$/;"	t	typeref:struct:sktable
 sktable	skiplist.h	/^typedef struct sktable{$/;"	s
 sktable	skiplist.h	/^}sktable;$/;"	t	typeref:struct:sktable
@@ -479,11 +506,11 @@ vflag	skiplist.h	/^	bool vflag;$/;"	m	struct:snode
 waiting	threading.h	/^	MeasureTime waiting;$/;"	m	struct:threading
 write_check_lock	threading.cpp	/^pthread_mutex_t write_check_lock;$/;"	v
 write_cond	threading.cpp	/^pthread_cond_t write_cond;$/;"	v
-write_data	lsmtree.cpp	/^KEYT write_data(lsmtree *LSM,skiplist *input,lsmtree_gc_req_t *req){$/;"	f
+write_data	lsmtree.cpp	/^KEYT write_data(lsmtree *LSM,skiplist *input,lsmtree_gc_req_t *req,double fpr){$/;"	f
 write_end_check	threading.cpp	/^int write_end_check;$/;"	v
 write_flag	threading.h	/^	bool write_flag;$/;"	m	struct:threadset
 write_lock	threading.cpp	/^pthread_mutex_t write_lock;$/;"	v
-write_meta_only	lsmtree.cpp	/^int write_meta_only(lsmtree *LSM, skiplist *data,lsmtree_gc_req_t * input){$/;"	f
+write_meta_only	lsmtree.cpp	/^int write_meta_only(lsmtree *LSM, skiplist *data,lsmtree_gc_req_t * input,double fpr){$/;"	f
 wt	threading.cpp	/^MeasureTime *wt;$/;"	v
 ~mpmc_bounded_queue_t	lfmpmc.h	/^		~mpmc_bounded_queue_t()$/;"	f	class:mpmc_bounded_queue_t
 ~spsc_bounded_queue_t	lockfreeq.h	/^		~spsc_bounded_queue_t()$/;"	f	class:spsc_bounded_queue_t

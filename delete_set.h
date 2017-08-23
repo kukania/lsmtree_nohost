@@ -29,11 +29,7 @@ inline uint64_t KEYSET(uint64_t &des,uint32_t src){
 	des=des | (temp<<32);
 	return des;
 }
-inline uint64_t LEVELSET(uint64_t& des, int level){
-	uint64_t temp=level;
-	des=des | (level<<8);
-	return des;
-}
+
 inline uint64_t FLAGSET(uint64_t &des, bool flag){
 	des=des | flag;
 	return des;

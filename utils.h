@@ -9,7 +9,7 @@
 #define PAGESIZE (8192)
 #define MUL 24
 #define LEVELN 5
-#define INPUTSIZE (1024*20)
+#define INPUTSIZE (1024*128)
 #define BUSYPOINT 0.7
 #define THREADQN 1024
 #define THREADNUM 1
@@ -36,7 +36,8 @@
 
 #define SNODE_SIZE (8192)
 
-#define RAF 2
+#define RAF 1
+#define FPR 0.2
 
 #ifndef NPRINTOPTION
 #define MT(t) measure_stamp((t))

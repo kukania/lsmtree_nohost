@@ -409,12 +409,12 @@ bool skiplist_keyset_read(keyset* k,char *res,int fd,lsmtree_req_t *req){
 #endif
 	return true;
 }
-KEYT skiplist_write(skiplist *data, lsmtree_gc_req_t * req,int hfd,int dfd){
+KEYT skiplist_write(skiplist *data, lsmtree_gc_req_t * req,int hfd,int dfd,double fpr){
 	skiplist_data_write(data,dfd,req);
-	return skiplist_meta_write(data,hfd,req);
+	return skiplist_meta_write(data,hfd,req,fpr);
 }
 int seq_number=0;
-KEYT skiplist_meta_write(skiplist *data,int fd, lsmtree_gc_req_t *req){
+KEYT skiplist_meta_write(skiplist *data,int fd, lsmtree_gc_req_t *req,double fpr){
 	int now=0;
 	int i=0;
 	snode *temp=data->header->list[1];
@@ -436,6 +436,8 @@ KEYT skiplist_meta_write(skiplist *data,int fd, lsmtree_gc_req_t *req){
 		temp_req->end_req=lr_gc_end_req;
 		data->bitset=(uint8_t*)malloc(sizeof(uint8_t)*(KEYN/8));
 		memset(data->bitset,0,sizeof(uint8_t)*(KEYN/8));
+		//bloofilter init
+		data->filter=bf_init(KEYN, fpr);
 		for(int i=0; i<KEYN; i++){
 			int bit_n=i/8;
 			int offset=i%8;
@@ -444,12 +446,12 @@ KEYT skiplist_meta_write(skiplist *data,int fd, lsmtree_gc_req_t *req){
 			if(temp->vflag){
 				data->bitset[bit_n] |= (1<<offset);	
 			}
+		 	bf_set(data->filter,temp_req->keys[i].key);
 			temp=temp->list[1];
 		}
 		//oob
 		uint64_t temp_oob=0;
 		KEYSET(temp_oob,temp_req->keys[i].key);
-		LEVELSET(temp_oob,req->flag);
 		FLAGSET(temp_oob,0);
 		oob[temp_pp]=temp_oob;
 #ifndef ENABLE_LIBFTL
@@ -481,7 +483,6 @@ KEYT skiplist_data_write(skiplist *data,int fd,lsmtree_gc_req_t * req){
 			KEYT temp_p=getPPA((void*)req);
 			uint64_t temp_oob=0;
 			KEYSET(temp_oob,temp->key);
-			LEVELSET(temp_oob,req->flag);
 			FLAGSET(temp_oob,1);
 			oob[temp_p]=temp_oob;
 			temp->ppa=temp_p;
@@ -529,7 +530,6 @@ void skiplist_sk_data_write(sktable *sk, int fd, lsmtree_gc_req_t *req){
 		sk->meta[i].ppa=temp_pp;
 		uint64_t temp_oob=0;
 		KEYSET(temp_oob,sk->meta[i].key);
-		LEVELSET(temp_oob,req->flag);
 		FLAGSET(temp_oob,1);
 		oob[temp_pp]=temp_oob;
 #ifdef ENABLE_LIBFTL

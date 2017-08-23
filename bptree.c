@@ -1,4 +1,5 @@
 #include"bptree.h"
+#include"bloomfilter.h"
 #include<string.h>
 #include<stdio.h>
 #include<stdlib.h>
@@ -32,6 +33,7 @@ Entry *make_entry(KEYT key,KEYT end,KEYT pbn1){
 	res->end=end;
 	res->pbn=pbn1;
 	res->bitset=NULL;
+	res->filter=NULL;
 	if(pbn1>INT_MAX)
 		sleep(10);
 	res->version=0;
@@ -46,12 +48,16 @@ Entry *level_entry_copy(Entry *input){
 	res->bitset=(uint8_t*)malloc(KEYN/8);
 	if(input->bitset!=NULL)
 		memcpy(res->bitset,input->bitset,KEYN/8);
+	
+	res->filter=bf_init(KEYN,input->filter->p);
+	memcpy(res->filter->body,input->filter->body,input->filter->targetsize);
 	res->parent=NULL;
 	return res;
 }
 void free_entry(Entry *entry){
 	if(entry->bitset!=NULL)
 		free(entry->bitset);
+	bf_free(entry->filter);
 	free(entry);
 }
 

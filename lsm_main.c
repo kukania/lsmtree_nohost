@@ -94,7 +94,7 @@ int main(){
 	threadset_request_wait(&processor);
 	threadset_gc_wait(&processor);
 	measure_end(&mt,"write_wait");
-	printf("write end!!\n");
+	printf("write end!!\n");/*
 	printf("%u\n",ppa.front());
 	for(int i=0; i<INPUTSIZE; i++){
 		req=(req_t *)malloc(sizeof(req_t));
@@ -109,7 +109,7 @@ int main(){
 	printf("%u\n",ppa.front());
 	while(delete_trim_process(dset)){
 		printf("deleted!\n");
-	}
+	}*/
 	//sleep(10);
 
 	pthread_t thr;

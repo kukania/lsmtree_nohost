@@ -55,9 +55,8 @@ void delete_ppa(delete_set *set,KEYT input){
 	set->blocks[block_num].bitset[bit_num] &= target;
 	set->blocks[block_num].invalid_n++;
 	if(set->blocks[block_num].invalid_n > PAGENUM){
-		printf("over block!\n");	
+	//	printf("over block!\n");	
 	}
-	printf("%u\n",input);
 }
 
 int delete_get_victim(delete_set *set){
@@ -102,7 +101,6 @@ void delete_change_cache(delete_set *set, Entry *entry, sktable *data,int level)
 #endif
 	uint64_t new_oob=0;
 	KEYSET(new_oob,set->cache_entry->key);
-	LEVELSET(new_oob,set->cache_level+1);
 	FLAGSET(new_oob,0);
 	oob[new_ppa]=new_oob;
 
@@ -199,7 +197,6 @@ int delete_trim_process(delete_set *set){
 						req=delete_make_req(1);//write
 						KEYT new_ppa=getPPA((void*)req);//for data;
 						KEYSET(new_oob,key);
-						LEVELSET(new_oob,level+1);
 						FLAGSET(new_oob,1);
 #ifdef ENABLE_LIBFTL
 						req->dmatag=memio_alloc_dma(1,&temp_p);
@@ -234,7 +231,6 @@ int delete_trim_process(delete_set *set){
 					KEYT new_pba=getPPA((void*)req); 
 					uint64_t new_oob=0;
 					KEYSET(new_oob,header->key);
-					LEVELSET(new_oob,level+1);
 					FLAGSET(new_oob,0);
 #ifdef ENABLE_LIBFTL
 					req->dmatag=memio_alloc_dma(1,&temp_p);

@@ -4,6 +4,7 @@
 #include"utils.h"
 #include"stdint.h"
 #include"LR_inter.h"
+#include"bloomfilter.h"
 typedef struct lsmtree_req_t lsmtree_req_t;
 typedef struct lsmtree_gc_req_t lsmtree_gc_req_t;
 typedef struct snode{
@@ -22,6 +23,7 @@ typedef struct skiplist{
 	uint64_t size;
 	snode *header;
 	uint8_t *bitset;
+	BF *filter;
 }skiplist;
 
 typedef struct skIterator{
@@ -54,8 +56,8 @@ bool skiplist_keyset_read_c(keyset* ,char *,int fd,lsmtree_gc_req_t *);
 void skiplist_sktable_free(sktable *);
 
 snode *skiplist_pop(skiplist *);
-KEYT skiplist_write(skiplist*,lsmtree_gc_req_t *,int hfd, int dfd);
-KEYT skiplist_meta_write(skiplist *, int fd,struct lsmtree_gc_req_t*);
+KEYT skiplist_write(skiplist*,lsmtree_gc_req_t *,int hfd, int dfd,double fpr);
+KEYT skiplist_meta_write(skiplist *, int fd,struct lsmtree_gc_req_t*,double fpr);
 KEYT skiplist_data_write(skiplist *, int fd,struct lsmtree_gc_req_t*);
 void skiplist_sk_data_write(sktable *,int fd,struct lsmtree_gc_req_t*);
 skiplist* skiplist_cut(skiplist *,KEYT num);

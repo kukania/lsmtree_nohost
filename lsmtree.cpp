@@ -6,6 +6,7 @@
 #include"LR_inter.h"
 #include"lsm_cache.h"
 #include"delete_set.h"
+#include"bloomfilter.h"
 #include<time.h>
 #include<pthread.h>
 #include<string.h>
@@ -15,6 +16,7 @@
 #include<semaphore.h>
 #include<sys/time.h>
 #include<limits.h>
+#include<math.h>
 #ifdef ENABLE_LIBFTL
 #include "libmemio.h"
 memio_t* mio;
@@ -48,11 +50,11 @@ LEVELN+1=last
 #endif
 
 
-KEYT write_data(lsmtree *LSM,skiplist *input,lsmtree_gc_req_t *req){
-	return skiplist_write(input,req,LSM->dfd,LSM->dfd);
+KEYT write_data(lsmtree *LSM,skiplist *input,lsmtree_gc_req_t *req,double fpr){
+	return skiplist_write(input,req,LSM->dfd,LSM->dfd,fpr);
 }
-int write_meta_only(lsmtree *LSM, skiplist *data,lsmtree_gc_req_t * input){
-	return skiplist_meta_write(data,LSM->dfd,input);
+int write_meta_only(lsmtree *LSM, skiplist *data,lsmtree_gc_req_t * input,double fpr){
+	return skiplist_meta_write(data,LSM->dfd,input,fpr);
 }
 
 lsmtree* init_lsm(lsmtree *res){
@@ -70,13 +72,27 @@ lsmtree* init_lsm(lsmtree *res){
 	res->buf.data=NULL;
 	res->sstable=NULL;
 	res->buf.lastB=NULL;
+
+//setting fprs
+	double ffpr=RAF*(1-MUL)/(1-pow(MUL,LEVELN+0));
+	uint64_t bits=0;
+//
 	for(int i=0;i<LEVELN; i++){
 		res->buf.disk[i]=(level*)malloc(sizeof(level));
 		if(i==0)
 			level_init(res->buf.disk[i],MUL);
 		else
 			level_init(res->buf.disk[i],res->buf.disk[i-1]->m_size*MUL);
+		double target_fpr=pow(MUL,i)*ffpr;
+		if(target_fpr>1)
+			res->buf.disk[i]=0;
+		else{
+			res->buf.disk[i]->fpr=FPR;//pow(MUL,i)*ffpr;
+			bits+=bf_bits(pow(MUL,i)*KEYN,FPR);
+		}
+		printf("[%d]%lf\n",i+1,target_fpr);
 	}
+	printf("bits : %lu\n",bits);
 #if !defined(ENABLE_LIBFTL)
 	if(SEQUENCE){
 		res->dfd=open("data/skiplist_data.skip",O_RDWR|O_CREAT|O_TRUNC,0666);
@@ -191,11 +207,6 @@ int thread_level_get(lsmtree *LSM,KEYT key, threading *input, char *ret, lsmtree
 		metaflag=false;
 		req->flag=i;
 
-		Entry *temp=level_find(LSM->buf.disk[i],key);
-		if(temp==NULL){
-			continue;
-		}
-
 		temp_key=cache_level_find(&input->master->mycache,i,key);
 		if(temp_key!=NULL){
 			if(temp_key->ppa==DELETEDKEY){
@@ -206,7 +217,16 @@ int thread_level_get(lsmtree *LSM,KEYT key, threading *input, char *ret, lsmtree
 			return 1;
 		}
 
-		if(temp->gc_cache){
+		Entry *temp=level_find(LSM->buf.disk[i],key);
+		if(temp==NULL){
+			continue;
+		}
+		else if(!bf_check(temp->filter,key)){
+			continue;
+		}
+
+
+		if(temp->gc_cache && dset->cache_table){
 			temp_key=skiplist_keyset_find(dset->cache_table,key);
 			if(temp_key->ppa==DELETEDKEY){
 				printf("[%u]deleted\n",temp_key->key);
@@ -287,13 +307,6 @@ int thread_get(lsmtree *LSM, KEYT key, threading *input, char *ret,lsmtree_req_t
 		metaflag=false;
 		req->flag=i;
 
-		Entry *temp=level_find(LSM->buf.disk[i],key);
-		int return_flag=3;
-		if(temp==NULL){
-			if(i==1)
-				printf("level_find fail!\n");
-			continue;
-		}
 		temp_key=cache_level_find(&input->master->mycache,i,key);
 
 		if(temp_key!=NULL){
@@ -305,7 +318,16 @@ int thread_get(lsmtree *LSM, KEYT key, threading *input, char *ret,lsmtree_req_t
 			return 1;
 		}
 
-		if(temp->gc_cache){
+		Entry *temp=level_find(LSM->buf.disk[i],key);
+		int return_flag=3;
+		if(temp==NULL){
+			continue;
+		}
+		else if(!bf_check(temp->filter,key)){
+			continue;
+		}
+
+		if(temp->gc_cache && dset->cache_table){
 			temp_key=skiplist_keyset_find(dset->cache_table,key);
 			if(temp_key->ppa==DELETEDKEY){
 				printf("[%u]deleted\n",temp_key->key);
@@ -425,8 +447,9 @@ bool compaction(lsmtree *LSM,level *src, level *des,Entry *ent,lsmtree_gc_req_t 
 	if(!check_getdata){
 		if(src==NULL){
 			skiplist* temp_skip=(skiplist*)req->data;
-			ent->pbn=write_data(LSM,(skiplist*)req->data,req);
+			ent->pbn=write_data(LSM,(skiplist*)req->data,req,des->fpr);
 			ent->bitset=temp_skip->bitset;
+			ent->filter=temp_skip->filter;
 			skiplist_meta_free(temp_skip);
 			level_insert(des,ent);
 		}
@@ -442,34 +465,12 @@ bool compaction(lsmtree *LSM,level *src, level *des,Entry *ent,lsmtree_gc_req_t 
 	}
 	else{
 		lr_gc_req_wait(req);//wait for all read;
-		//update victim's oob
-		int facr;
+		int factor;
 		if(src==NULL){
 			skiplist* temp_skip=(skiplist*)req->data;
-			//update oob
 			ent->pbn=skiplist_data_write(temp_skip,LSM->dfd,req);
 		}
-		else{
-			factor=src->m_size;
-			for(int i=allnumber-1; i>=allnumber-factor; i--){
-				sktable *victim_sk=&req->compt_headers[i];
-				victim_sk->value=(char*)malloc(PAGESIZE * KEYN);
-				req->now_number=0;
-				req->target_number=0;
-				uint8_t *temp_bitset=delete_bitset[i];
-				for(int j=0; j<KEYN; j++){
-					int bit_n=j/8;
-					int off=j%8;
-					if(temp_bitset[bit_n] & (1<<off)){
-						skiplist_keyset_read_c(&victim_sk->meta[j],&victim_sk->value[PAGESIZE*j],LSM->dfd,req);
-						req->target_number++;
-					}
-				}
-				lr_gc_req_wait(req);
-				skiplist_sk_data_write(victim_sk,LSM->dfd,req);
-				free(victim_sk->value);
-			}
-		}
+
 		int getIdx=0;
 		skiplist *t;
 		snode *temp_s;
@@ -507,8 +508,9 @@ bool compaction(lsmtree *LSM,level *src, level *des,Entry *ent,lsmtree_gc_req_t 
 		}
 
 		while((t=skiplist_cut(last,KEYN))){
-			Entry* temp_e=make_entry(t->start, t->end, write_meta_only(LSM,t,req));
+			Entry* temp_e=make_entry(t->start, t->end, write_meta_only(LSM,t,req,des->fpr));
 			temp_e->bitset=t->bitset;
+			temp_e->filter=t->filter;
 			if(temp_e->pbn>INT_MAX){
 				printf("compaction wirte!\n");
 				sleep(10);

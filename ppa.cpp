@@ -6,8 +6,11 @@ extern delete_set *dset;
 extern lsmtree *LSM;
 KEYT DELETEDKEY;
 std::queue<KEYT> ppa;
+KEYT ppa2;
 pthread_mutex_t physical_gc_lock;
 void initPPA(){
+	ppa2=1;
+	return;
 	pthread_mutex_init(&physical_gc_lock,NULL);
 	DELETEDKEY=MAXPAGE;
 	for(int i=1; i<MAXPAGE; i++){
@@ -15,6 +18,7 @@ void initPPA(){
 	}
 }
 KEYT getPPA(void *req){
+	return ppa2++;
 	pthread_mutex_lock(&physical_gc_lock);
 	while(ppa.size()<2048){
 		if(delete_get_victim(dset)<0){

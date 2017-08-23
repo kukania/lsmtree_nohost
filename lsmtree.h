@@ -30,7 +30,7 @@ int get(lsmtree *,KEYT key,char *);
 int thread_get(lsmtree *,KEYT key,threading *, char *value,lsmtree_req_t *);
 int thread_level_get(lsmtree *,KEYT key,threading *,char *value,lsmtree_req_t *, int);
 void lsm_free(lsmtree *);
-KEYT write_data(lsmtree *LSM,skiplist *,lsmtree_gc_req_t *);
+KEYT write_data(lsmtree *LSM,skiplist *,lsmtree_gc_req_t *,double);
 bool is_flush_needed(lsmtree * );
 bool is_compt_needed(lsmtree *,KEYT);
 #endif

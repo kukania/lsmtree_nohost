@@ -1,6 +1,7 @@
 #ifndef __BP__HEADER__
 #define __BP__HEADER__
 #include"utils.h"
+#include"bloomfilter.h"
 struct Entry; struct Node;
 typedef union Child{
 	struct Entry *entry;
@@ -14,6 +15,7 @@ typedef struct Entry{
 	KEYT pbn;
 	bool gc_cache;
 	uint8_t *bitset;
+	BF *filter;
 	struct Node *parent;
 }Entry;
 
@@ -31,6 +33,7 @@ typedef struct level{
 	int size;
 	int m_size;
 	int depth;
+	double fpr;
 	KEYT start;
 	KEYT end;
 	KEYT version;
