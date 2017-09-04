@@ -12,7 +12,6 @@
 #include "libmemio.h"
 #endif
 lsmtree *LSM;
-delete_set *dset;
 threadset processor;
 MeasureTime mt;
 MeasureTime mas;
@@ -34,9 +33,7 @@ extern int write_end_check;
 pthread_mutex_t gc_cnt_lock;
 int8_t lr_inter_init(){
 	LSM=(lsmtree*)malloc(sizeof(lsmtree));
-	dset=(delete_set*)malloc(sizeof(delete_set));
-	initPPA();
-	delete_init(dset);
+	delete_init();
 	threadset_init(&processor);
 	threadset_start(&processor);
 	pthread_mutex_init(&pl,NULL);
@@ -157,11 +154,6 @@ int8_t lr_end_req(lsmtree_req_t *r){
 		case LR_DELETE_PR:
 			value=(char*)r->params[2];
 			memcpy(value,r->data,PAGESIZE);
-#ifdef ENABLE_LIBFTL
-			memio_free_dma(2,r->dmatag);
-#else
-			free(r->data);
-#endif
 			pthread_mutex_unlock(&r->meta_lock);
 			break;
 		case LR_DELETE_R:
@@ -204,8 +196,9 @@ int8_t lr_end_req(lsmtree_req_t *r){
 			r->req=NULL;
 			break;
 		case LR_DDW_T:
-#ifdef ENABLE_LIBFTL
+#if defined(ENABLE_LIBFTL) && defined(LIBLSM)
 			memio_free_dma(1,r->req->dmaTag);
+#elif SERVER
 #else
 			free(r->req->value);
 #endif
@@ -214,9 +207,11 @@ int8_t lr_end_req(lsmtree_req_t *r){
 		case LR_READ_T:
 			read_end_check++;
 //			delete r->meta;
-//			pthread_mutex_destroy(&r->meta_lock);
-#ifdef ENABLE_LIBFTL
+			pthread_mutex_destroy(&r->meta_lock);
+#if defined(ENABLE_LIBFTL) && defined(LIBLSM)
 			memio_free_dma(2,r->req->dmaTag);
+#elif SERVER
+
 #else
 			free(r->req->value);
 #endif

@@ -25,9 +25,10 @@ memio_t* mio;
 
 #ifdef THREAD
 extern threadset processor;
-extern delete_set *dset;
 extern MeasureTime mt;
 extern uint64_t* oob;
+extern delete_set *header_segment;
+extern delete_set *data_segment;
 extern KEYT DELETEDKEY;
 pthread_mutex_t sst_lock;
 pthread_mutex_t mem_lock;
@@ -90,9 +91,9 @@ lsmtree* init_lsm(lsmtree *res){
 			res->buf.disk[i]->fpr=FPR;//pow(MUL,i)*ffpr;
 			bits+=bf_bits(pow(MUL,i)*KEYN,FPR);
 		}
-		printf("[%d]%lf\n",i+1,target_fpr);
+	//	printf("[%d]%lf\n",i+1,target_fpr);
 	}
-	printf("bits : %lu\n",bits);
+	//printf("bits : %lu\n",bits);
 #if !defined(ENABLE_LIBFTL)
 	if(SEQUENCE){
 		res->dfd=open("data/skiplist_data.skip",O_RDWR|O_CREAT|O_TRUNC,0666);
@@ -221,20 +222,11 @@ int thread_level_get(lsmtree *LSM,KEYT key, threading *input, char *ret, lsmtree
 		if(temp==NULL){
 			continue;
 		}
+#ifdef BLOOM
 		else if(!bf_check(temp->filter,key)){
 			continue;
 		}
-
-
-		if(temp->gc_cache && dset->cache_table){
-			temp_key=skiplist_keyset_find(dset->cache_table,key);
-			if(temp_key->ppa==DELETEDKEY){
-				printf("[%u]deleted\n",temp_key->key);
-				return 6;
-			}
-			skiplist_keyset_read(temp_key,ret,LSM->dfd,req);
-			return 1;
-		}
+#endif
 
 		for(int j=0; j<WAITREQN; j++){
 			if(input->pre_req[j]!=NULL){
@@ -323,20 +315,11 @@ int thread_get(lsmtree *LSM, KEYT key, threading *input, char *ret,lsmtree_req_t
 		if(temp==NULL){
 			continue;
 		}
+#ifdef BLOOM
 		else if(!bf_check(temp->filter,key)){
 			continue;
 		}
-
-		if(temp->gc_cache && dset->cache_table){
-			temp_key=skiplist_keyset_find(dset->cache_table,key);
-			if(temp_key->ppa==DELETEDKEY){
-				printf("[%u]deleted\n",temp_key->key);
-				return 6;
-			}
-			skiplist_keyset_read(temp_key,ret,LSM->dfd,req);
-			return 1;
-		}
-
+#endif
 		for(int j=0; j<WAITREQN; j++){
 			if(input->pre_req[j]!=NULL){
 				if(temp==input->entry[j]){
@@ -414,7 +397,7 @@ bool compaction(lsmtree *LSM,level *src, level *des,Entry *ent,lsmtree_gc_req_t 
 		for(int i=0; iter[i]!=NULL; i++) allnumber++;
 		delete_sets=(KEYT*)malloc(sizeof(KEYT)*(des->m_size));
 		if(src!=NULL)
-			allnumber+=src->m_size;
+			allnumber+=src->size;
 		check_getdata=true;
 		req->now_number=0;
 		req->target_number=allnumber;
@@ -449,7 +432,9 @@ bool compaction(lsmtree *LSM,level *src, level *des,Entry *ent,lsmtree_gc_req_t 
 			skiplist* temp_skip=(skiplist*)req->data;
 			ent->pbn=write_data(LSM,(skiplist*)req->data,req,des->fpr);
 			ent->bitset=temp_skip->bitset;
+#ifdef BLOOM
 			ent->filter=temp_skip->filter;
+#endif
 			skiplist_meta_free(temp_skip);
 			level_insert(des,ent);
 		}
@@ -473,7 +458,11 @@ bool compaction(lsmtree *LSM,level *src, level *des,Entry *ent,lsmtree_gc_req_t 
 
 		int getIdx=0;
 		skiplist *t;
-		snode *temp_s;
+		snode *temp_s;/*
+		for(int i=0; i<allnumber; i++){
+			printf("%u ",delete_pbas[i]);
+		}
+		printf("\n");*/
 		for(int i=0; i<allnumber; i++){
 			sktable *sk=&req->compt_headers[i];
 			uint8_t *temp_bit=delete_bitset[i];
@@ -489,7 +478,7 @@ bool compaction(lsmtree *LSM,level *src, level *des,Entry *ent,lsmtree_gc_req_t 
 				if(temp_s!=NULL)
 					temp_s->ppa=sk->meta[k].ppa;
 			}
-			delete_ppa(dset,delete_pbas[i]);
+			delete_ppa(header_segment,delete_pbas[i]);
 		}
 
 		if(src==NULL){
@@ -507,10 +496,12 @@ bool compaction(lsmtree *LSM,level *src, level *des,Entry *ent,lsmtree_gc_req_t 
 			level_delete(des,delete_sets[i]);
 		}
 
-		while((t=skiplist_cut(last,KEYN))){
+		while((t=skiplist_cut(last,KEYN > last->size? last->size:KEYN))){
 			Entry* temp_e=make_entry(t->start, t->end, write_meta_only(LSM,t,req,des->fpr));
 			temp_e->bitset=t->bitset;
+#ifdef BLOOM
 			temp_e->filter=t->filter;
+#endif
 			if(temp_e->pbn>INT_MAX){
 				printf("compaction wirte!\n");
 				sleep(10);

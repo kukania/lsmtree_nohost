@@ -15,6 +15,7 @@ CFLAGS  +=\
 		  -DCONFIG_ENABLE_DEBUG \
 		  -DUSE_PMU \
 		  -DUSE_NEW_RMW \
+		  #-DBLOOM\
 		  #-DENABLE_LIBFTL\
 
 
@@ -31,16 +32,17 @@ LIBS    :=\
 	-lpthread\
 
 SRCS    :=\
-	bptree.c\
-	skiplist.c\
+	bptree.cpp\
+	skiplist.cpp\
 	LR_inter.cpp\
 	lsmtree.cpp\
 	lsm_cache.c\
 	threading.cpp\
+	normal_queue.c\
 	measure.c\
 	ppa.cpp\
-	delete_set.c\
-	bloomfilter.c\
+	delete_set.cpp\
+	bloomfilter.cpp\
 
 
 OBJS    :=\
@@ -54,14 +56,14 @@ TARGETOBJ :=\
 
 all : LIBLSM
 
-bloomfilter: bloomfilter.c bloomfilter.h
+bloomfilter: bloomfilter.cpp bloomfilter.h
 	g++ -DCPP -g -o bf_test bloomfilter.c
 
 test: liblsm.a test.c
 	$(CC) $(INCLUDES) $(CFLAGS) -o $@ test.c liblsm.a $(LIBS)
 
-LIBLSM : liblsm.a lsm_main.c 
-	$(CC) $(INCLUDES) $(CFLAGS) -o $@ lsm_main.c liblsm.a $(LIBS)
+LIBLSM : liblsm.a lsm_main.cpp 
+	$(CC) $(INCLUDES) $(CFLAGS) -o $@ lsm_main.cpp liblsm.a $(LIBS)
 
 liblsm.a: $(TARGETOBJ)
 	$(AR) r $(@) $(TARGETOBJ)

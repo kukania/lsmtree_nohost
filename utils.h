@@ -9,7 +9,7 @@
 #define PAGESIZE (8192)
 #define MUL 24
 #define LEVELN 5
-#define INPUTSIZE (1024*128)
+#define INPUTSIZE (1024*128*9)
 #define BUSYPOINT 0.7
 #define THREADQN 1024
 #define THREADNUM 1
@@ -31,8 +31,10 @@
 #define WAITMETAN	128
 
 #define PAGENUM (4096)
-#define SEGNUM  (2*32) 
-#define MAXPAGE (2*32*4096) //1G=32*4096
+#define SEGNUM  (32*12) 
+#define MAXPAGE (32*12*4096) //1G=32*4096
+#define MAXPPH	(2*4096);
+#define DTPBLOCK (4)
 
 #define SNODE_SIZE (8192)
 

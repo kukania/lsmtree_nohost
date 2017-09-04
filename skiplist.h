@@ -23,7 +23,9 @@ typedef struct skiplist{
 	uint64_t size;
 	snode *header;
 	uint8_t *bitset;
+#ifdef BLOOM
 	BF *filter;
+#endif
 }skiplist;
 
 typedef struct skIterator{

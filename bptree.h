@@ -15,7 +15,9 @@ typedef struct Entry{
 	KEYT pbn;
 	bool gc_cache;
 	uint8_t *bitset;
+#ifdef BLOOM
 	BF *filter;
+#endif
 	struct Node *parent;
 }Entry;
 

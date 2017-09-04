@@ -164,8 +164,8 @@ void* thread_gc_main(void *input){
 							src=LSM->buf.disk[i];
 							des=LSM->buf.disk[i+1];
 							pthread_mutex_init(&lsm_req->meta_lock,NULL);
-							lsm_req->flag=i+2;//lsm_req->flag for oob
-							flag=i+2;
+							lsm_req->flag=i+2-1;//lsm_req->flag for oob
+							flag=i+2-1;
 							compaction(LSM,src,des,NULL,lsm_req);
 						}
 					}
@@ -179,7 +179,7 @@ void* thread_gc_main(void *input){
 							pthread_mutex_init(&lsm_req->meta_lock,NULL);
 						src=LSM->buf.disk[i];
 						des=LSM->buf.disk[i+1];
-						lsm_req->flag=i+2;//lsm_req->flag for oob
+						lsm_req->flag=i+2-1;//lsm_req->flag for oob
 						flag=i+2;
 						compaction(LSM,src,des,NULL,lsm_req);
 					}
@@ -191,7 +191,7 @@ void* thread_gc_main(void *input){
 			data=(skiplist*)lsm_req->params[2];
 			lsm_req->now_number=0;
 			lsm_req->target_number=0;
-			lsm_req->flag=1;//lsm_req->flag for oob
+			lsm_req->flag=1-1;//lsm_req->flag for oob
 			result_entry=make_entry(data->start,data->end,0);
 //			result_entry->bitset=data->bitset;
 //			skiplist_meta_free(data);
