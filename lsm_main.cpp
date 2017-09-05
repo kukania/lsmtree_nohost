@@ -81,7 +81,7 @@ int main(){
 		else{
 			key=i;
 		}
-			req->key=key;
+		req->key=key;
 #ifdef ENABLE_LIBFTL
 		req->dmaTag=memio_alloc_dma(req->type,&req->value);
 #else
@@ -107,6 +107,10 @@ int main(){
 	printf("delete end!!\n");
 	while(delete_trim_process_header(header_segment)){
 		printf("deleted!\n");
+	}*//*
+	for(int i=0; i<LEVELN; i++){
+		printf("\n--------------[level %d]-------\n",i);
+		level_print(LSM->buf.disk[i]);
 	}*/
 	//sleep(10);
 
@@ -126,8 +130,6 @@ int main(){
 		else{
 			key=i;
 		}
-		if(key==2133896408)
-			printf("here!\n");
 		req->key=key;
 		key=i;
 #ifdef ENABLE_LIBFTL
@@ -149,6 +151,7 @@ int main(){
 	printf("buf:%.6f\n",(float)buf.adding.tv_usec/1000000);
 	printf("bp:%.6f\n",(float)bp.adding.tv_usec/1000000);
 	printf("find:%.6f\n",(float)find.adding.tv_usec/1000000);
+	threadset_debug_print(&processor);
 	//printf("assign write:%.6f\n",(float)mas2.adding.tv_usec/1000000);
 //	printf("assign read:%.6f\n",(float)mas.adding.tv_usec/1000000);
 	//printf("writetime:%.6f\n",(float)gt.adding.tv_usec/1000000);
@@ -169,7 +172,6 @@ int main(){
 		level_print(LSM->buf.disk[i]);
 	}*/
 /*
-	threadset_debug_print(&processor);
 	cache_summary(&processor.mycache);
 	printf("pros hit 1 : %d\n",pros_hit);
 	printf("pros hit 2 : %d\n",pros_hit2);

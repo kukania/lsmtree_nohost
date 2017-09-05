@@ -27,6 +27,7 @@ void segment_init(segment *,int start_block_nr,int size,bool isdata);
 KEYT getPPA(segment*,void *);
 KEYT getRPPA(segment *,void *);
 void freePPA(segment*,KEYT);
+void segment_block_oob_clear(segment *, int block_num);
 void segment_block_init(segment *, int block_num);
 void segment_block_change(segment *,int target_block);
 void segment_free(segment*);

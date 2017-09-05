@@ -9,13 +9,16 @@
 #define PAGESIZE (8192)
 #define MUL 24
 #define LEVELN 5
-#define INPUTSIZE (1024*128*9)
+#define INPUTSIZE (1024*128*16)
+#define BLOOM
+#define MONKEY_BLOOM
 #define BUSYPOINT 0.7
 #define THREADQN 1024
 #define THREADNUM 1
 #define THREAD //-do thread
 //#define DEBUG_THREAD 
 //#define NOR //- not read data
+
 
 #define STARTMERGE 0.7
 #define ENDMERGE 0.5
@@ -31,16 +34,17 @@
 #define WAITMETAN	128
 
 #define PAGENUM (4096)
-#define SEGNUM  (32*12) 
-#define MAXPAGE (32*12*4096) //1G=32*4096
+#define SEGNUM  (32*20) 
+#define MAXPAGE (32*20*4096) //1G=32*4096
 #define MAXPPH	(2*4096);
 #define DTPBLOCK (4)
 
 #define SNODE_SIZE (8192)
 
-#define RAF 1
-#define FPR 0.2
+#define RAF 1 //for monkey bloomfilter
+#define FPR 0.02 //normal bloomfilter
 
+#define NODATA UINT_MAX
 #ifndef NPRINTOPTION
 #define MT(t) measure_stamp((t))
 #define MS(t) measure_start((t))

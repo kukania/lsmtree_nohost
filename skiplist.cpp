@@ -459,8 +459,8 @@ KEYT skiplist_meta_write(skiplist *data,int fd, lsmtree_gc_req_t *req,double fpr
 		}
 		temp_i++;
 		for(int i=temp_i; i<KEYN; i++){
-			temp_req->keys[i].key=UINT_MAX;
-			temp_req->keys[i].ppa=UINT_MAX;
+			temp_req->keys[i].key=NODATA;
+			temp_req->keys[i].ppa=NODATA;
 		}
 		//oob
 		uint64_t temp_oob=0;
@@ -574,6 +574,43 @@ skiplist *skiplist_cut(skiplist *list,KEYT num){
 	}
 	res->size=num;
 	return res;
+}
+KEYT sktable_meta_write(sktable *input,lsmtree_gc_req_t *req,int fd,void **ft,float fpr){
+	KEYT temp_pp=getPPA(header_segment,(void*)req);
+	BF *filter;
+	lsmtree_gc_req_t *temp_req=(lsmtree_gc_req_t*)malloc(sizeof(lsmtree_req_t));
+	temp_req->isgc=true;
+	temp_req->type=LR_DW_T;
+
+#ifndef ENABLE_LIBFTL
+	temp_req->keys=(keyset*)malloc(PAGESIZE);
+#else	
+	char *temp_p;	
+	temp_req->dmatag=memio_alloc_dma(1,&temp_p);
+	temp_req->keys=(keyset*)temp_p;
+#endif
+	//temp_req->parent=req;
+	temp_req->end_req=lr_gc_end_req;
+#ifdef BLOOM
+	filter=bf_init(KEYN, fpr);
+#endif
+	for(int i=0; i<KEYN; i++){
+		bf_set(filter,input->meta[i].key);
+	}
+	memcpy(temp_req->keys,input,PAGESIZE);
+#ifndef ENABLE_LIBFTL
+	pthread_mutex_lock(&dfd_lock);
+	if(lseek64(fd,((off64_t)PAGESIZE)*temp_pp,SEEK_SET)==-1)
+			printf("lseek error in meta read!\n");
+	write(fd,temp_req->keys,PAGESIZE);
+	pthread_mutex_unlock(&dfd_lock);
+	temp_req->end_req(temp_req);
+#else	
+	memio_write(mio,temp_pp,(uint64_t)(PAGESIZE),(uint8_t*)temp_req->keys,1,(void*)temp_req,temp_req->dmatag);
+#endif
+	BF **_ft=(BF**)ft;
+	*_ft=filter;
+	return temp_pp;
 }
 #ifdef DEBUG
 int main(){

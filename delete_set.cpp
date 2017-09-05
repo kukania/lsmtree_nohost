@@ -45,14 +45,18 @@ void delete_ppa(delete_set *set,KEYT input){
 
 	block_num-=set->start_block_n;
 	uint8_t target=1;
+	uint8_t test=1;
 	target=target<<offset;
+	test=target;
 	target=~target;
 	for(int i=0; i<set->size; i++){
 		if(set->blocks[i].number!=block_num) continue;
+		if(!(test&set->blocks[i].bitset[bit_num])) continue;
 		set->blocks[i].bitset[bit_num] &= target;
 		set->blocks[i].invalid_n++;
 		if(set->blocks[block_num].invalid_n > PAGENUM){
 			printf("over block! : %d\n",set->blocks[block_num].number);	
+			exit(1);
 		}
 	}
 }
@@ -77,6 +81,7 @@ int delete_trim_process_header(delete_set *set){
 		return 0;
 	int invalids=set->blocks[block_num].invalid_n;
 	if(invalids==PAGENUM){
+		segment_block_oob_clear(set,block_num);
 		segment_block_init(set,block_num);
 		//send trim process
 		return 1;
@@ -146,7 +151,6 @@ int delete_trim_process_header(delete_set *set){
 				KEYT new_pba=getRPPA(set,(void*)req);
 				KEYSET(new_oob,key);
 				FLAGSET(new_oob,0);
-
 #ifdef ENABLE_LIBFTL
 				req->dmatag=memio_alloc_dma(1,&temp_p);
 #else
@@ -170,6 +174,7 @@ int delete_trim_process_header(delete_set *set){
 			if(stop_flag)
 				break;
 		}
+		segment_block_oob_clear(set,block_num);
 		segment_block_init(set,block_num);
 		segment_block_change(set,block_num);
 	}
@@ -181,6 +186,7 @@ int delete_trim_process_data(delete_set *set){
 		return 0;
 	int invalids=set->blocks[block_num].invalid_n;
 	if(invalids==PAGENUM){
+		segment_block_oob_clear(set,block_num);
 		segment_block_init(set,block_num);
 		//send trim operation
 		return 1;
@@ -333,6 +339,7 @@ int delete_trim_process_data(delete_set *set){
 			if(stop_flag)
 				break;
 		}
+		segment_block_oob_clear(set,block_num);
 		segment_block_init(set,block_num);
 		segment_block_change(set,block_num);
 	}

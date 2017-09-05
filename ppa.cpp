@@ -6,6 +6,7 @@
 #include<pthread.h>
 KEYT DELETEDKEY;
 extern lsmtree *LSM;
+extern uint64_t *oob;
 void segment_init(segment *input,int start_block_n, int size, bool isdata){
 	DELETEDKEY=MAXPAGE+DTPBLOCK*PAGENUM; //move to out place
 	input->size=size;
@@ -70,6 +71,13 @@ void freePPA(segment *input, KEYT in){
 void segment_free(segment *input){
 	free(input->blocks);
 	free(input);
+}
+
+void segment_block_oob_clear(segment *input, int block_num){
+	int number=input->blocks[block_num].number;
+	for(int i=number*PAGENUM; i<number*PAGENUM+PAGENUM; i++){
+		oob[i]=0;
+	}
 }
 
 void segment_block_init(segment * input, int block_num){

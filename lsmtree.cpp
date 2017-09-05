@@ -43,6 +43,7 @@ int cache_hit;
 int pros_hit2;
 int pros_hit;
 int mem_hit;
+int header_read;
 /*
 0: memtable
 1~LEVELN : level
@@ -74,10 +75,10 @@ lsmtree* init_lsm(lsmtree *res){
 	res->sstable=NULL;
 	res->buf.lastB=NULL;
 
-//setting fprs
+	//setting fprs
 	double ffpr=RAF*(1-MUL)/(1-pow(MUL,LEVELN+0));
 	uint64_t bits=0;
-//
+	//
 	for(int i=0;i<LEVELN; i++){
 		res->buf.disk[i]=(level*)malloc(sizeof(level));
 		if(i==0)
@@ -88,10 +89,15 @@ lsmtree* init_lsm(lsmtree *res){
 		if(target_fpr>1)
 			res->buf.disk[i]=0;
 		else{
+#ifdef MONKEY_BLOOM
+			res->buf.disk[i]->fpr=target_fpr;
+#else
 			res->buf.disk[i]->fpr=FPR;//pow(MUL,i)*ffpr;
+#endif
+			printf("[%d] : fpr > %f\n",i,res->buf.disk[i]->fpr);
 			bits+=bf_bits(pow(MUL,i)*KEYN,FPR);
 		}
-	//	printf("[%d]%lf\n",i+1,target_fpr);
+		//	printf("[%d]%lf\n",i+1,target_fpr);
 	}
 	//printf("bits : %lu\n",bits);
 #if !defined(ENABLE_LIBFTL)
@@ -264,6 +270,7 @@ int thread_level_get(lsmtree *LSM,KEYT key, threading *input, char *ret, lsmtree
 		skiplist_meta_read_n(temp->pbn,LSM->dfd,0,req);
 		return 3;
 	}
+	printf("level : %d\n",l);
 	return returnflag;
 }
 int thread_get(lsmtree *LSM, KEYT key, threading *input, char *ret,lsmtree_req_t* req){
@@ -421,7 +428,7 @@ bool compaction(lsmtree *LSM,level *src, level *des,Entry *ent,lsmtree_gc_req_t 
 				delete_bitset[counter]=iter_temp->bitset;
 				skiplist_meta_read_c(iter_temp->pbn,LSM->dfd,counter++,req);
 			}
-			free(iter_temp);
+			free(level_iter);
 		}
 	}
 
@@ -439,13 +446,46 @@ bool compaction(lsmtree *LSM,level *src, level *des,Entry *ent,lsmtree_gc_req_t 
 			level_insert(des,ent);
 		}
 		else{
+#ifndef MONKEY_BLOOM
 			Iter *level_iter=level_get_Iter(src);
 			Entry *iter_temp;
 			while((iter_temp=level_get_next(level_iter))!=NULL){
 				Entry *copied_entry=level_entry_copy(iter_temp);
 				level_insert(des,copied_entry);
 			}
-			free(iter_temp);
+			free(level_iter);
+#else
+			req->now_number=0;
+			req->target_number=src->size;
+			req->compt_headers=(sktable*)malloc(sizeof(sktable)*src->size);
+			int counter=0;
+			Iter *level_iter=level_get_Iter(src);
+			Entry *iter_temp;
+			while((iter_temp=level_get_next(level_iter))!=NULL){
+				skiplist_meta_read_c(iter_temp->pbn,LSM->dfd,counter++,req);
+			}
+			free(level_iter);
+			lr_gc_req_wait(req);
+			level_iter=level_get_Iter(src);
+			counter=0;
+		//	BF *filter;
+			while((iter_temp=level_get_next(level_iter))!=NULL){
+	//			delete_ppa(header_segment,iter_temp->pbn);
+	//			KEYT temp_pbn=sktable_meta_write(&req->compt_headers[counter++],req,LSM->dfd,(void**)&filter,des->fpr);
+				Entry* copied_entry=level_entry_copy(iter_temp);
+				iter_temp->bitset=NULL;
+				bf_free(copied_entry->filter);
+				copied_entry->filter=bf_init(KEYN,des->fpr);
+				for(int i=0; i<KEYN; i++){
+					bf_set(copied_entry->filter,req->compt_headers[counter].meta[i].key);
+				}
+				counter++;
+//				copied_entry->filter=filter;
+//				copied_entry->pbn=temp_pbn;
+				level_insert(des,copied_entry);
+			}
+			free(level_iter);
+#endif
 		}
 	}
 	else{
@@ -458,17 +498,14 @@ bool compaction(lsmtree *LSM,level *src, level *des,Entry *ent,lsmtree_gc_req_t 
 
 		int getIdx=0;
 		skiplist *t;
-		snode *temp_s;/*
-		for(int i=0; i<allnumber; i++){
-			printf("%u ",delete_pbas[i]);
-		}
-		printf("\n");*/
+		snode *temp_s;
 		for(int i=0; i<allnumber; i++){
 			sktable *sk=&req->compt_headers[i];
 			uint8_t *temp_bit=delete_bitset[i];
 			for(int k=0; k<KEYN; k++){
 				int bit_n=k/8;
 				int off=k%8;
+				if(sk->meta[k].key==NODATA) continue;
 				if(temp_bit[bit_n] & (1<<off)){
 					temp_s=skiplist_insert(last,sk->meta[k].key,NULL,NULL,true);
 				}
@@ -497,7 +534,9 @@ bool compaction(lsmtree *LSM,level *src, level *des,Entry *ent,lsmtree_gc_req_t 
 		}
 
 		while((t=skiplist_cut(last,KEYN > last->size? last->size:KEYN))){
+			//MS(&mem);
 			Entry* temp_e=make_entry(t->start, t->end, write_meta_only(LSM,t,req,des->fpr));
+			//ME(&mem,"mem");
 			temp_e->bitset=t->bitset;
 #ifdef BLOOM
 			temp_e->filter=t->filter;
@@ -528,10 +567,12 @@ bool compaction(lsmtree *LSM,level *src, level *des,Entry *ent,lsmtree_gc_req_t 
 				break;
 			}
 		}
+		float fpr=src->fpr;
 		level_free(src);
 		src=(level*)malloc(sizeof(level));
 		src=level_init(src,m_size);
 		*temp_pp=src;
+		src->fpr=fpr;
 	}
 	LSM->buf.lastB=last;
 	return true;

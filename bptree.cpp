@@ -518,10 +518,13 @@ void level_print(level *lev){
 		return;
 	Entry *iter=level_getFirst(lev);
 	Node *startN=iter->parent;
+	if(startN==NULL)
+		startN=lev->root;
 	int cnt=1;
+	printf("size:%d\n", lev->size);
 	while(1){
 		printf("%u\n",iter->key);
-		if(cnt <startN->count){
+		if(startN!=NULL && cnt <startN->count){
 			iter=startN->children[cnt++].entry;
 		}
 		else{

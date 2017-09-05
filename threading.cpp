@@ -249,6 +249,9 @@ void* thread_main(void *input){
 					test_num=thread_level_get(LSM,*key,myth,value,lsm_req,lsm_req->flag);
 					if(test_num<=0){
 						printf("[%u]not_found\n",*key);
+#ifdef SERVER
+						lsm_req->req->type_info->type=-1
+#endif
 						lsm_req->end_req(lsm_req);
 					}
 					if(test_num==6)
@@ -260,6 +263,9 @@ void* thread_main(void *input){
 					test_num=thread_get(LSM,*key,myth,value,lsm_req);
 					if(test_num==0){
 						printf("[%u]not_found\n",*key);
+#ifdef SERVER
+						lsm_req->req->type_info->type=-1
+#endif
 						lsm_req->end_req(lsm_req);
 					}
 					if(test_num==2)
@@ -357,20 +363,18 @@ void threadset_debug_print(threadset *input){
 	for(int i=0; i<THREADNUM; i++){
 		temp=input->threads[i];
 		printf("\n[threadnumber:%d]\n",i);
-		printf("cache_hit : %d\n",temp.cache_hit);
 		printf("header_read : %d\n",temp.header_read);
-		printf("waiting time : %.6f\n",(float)temp.waiting.adding.tv_usec/1000000);
 		printf("------------------------\n");
 
 		all_cache_hit+=temp.cache_hit;
 		all_header_read+=temp.header_read;
-		all_waiting_time+=(float)temp.waiting.adding.tv_usec/1000000;
 	}
 
 	printf("\n\n======================\n");
 	printf("all summary\n");
 	printf("cache_hit : %d\n",all_cache_hit);
-	printf("header_read: %d\n",all_header_read);
+	printf("header_read: %d [%d]\n",all_header_read,INPUTSIZE-KEYN);
+	printf("RAFl: %.3f\n",(float)all_header_read/(INPUTSIZE-KEYN));
 	printf("waiting time : %.6f\n",all_waiting_time);
 	printf("======================\n");
 
