@@ -69,4 +69,5 @@ void skiplist_free(skiplist *list);
 KEYT sktable_meta_write(sktable* input,lsmtree_gc_req_t *,int dfd,void **filter,float fpr);
 skIterator* skiplist_getIterator(skiplist *list);
 void skiplist_traversal(skiplist *data);
+void sktable_print(sktable *);
 #endif

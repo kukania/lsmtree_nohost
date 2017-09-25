@@ -90,13 +90,14 @@ Node *level_find_leafnode(level *lev, KEYT key){
 	}
 	return temp;
 }
-
+extern MeasureTime bp;
 Entry *level_find(level *lev, KEYT key){
 	Node *startN=level_find_leafnode(lev,key);
 	Entry *temp=startN->children[0].entry;
 	if(temp==NULL) return NULL;
 	int cnt=1;
 	while(1){
+		if(temp->key>key)return NULL;
 		if(temp->key <=key && temp->end>=key)
 			return temp;
 		if(cnt <startN->count){

@@ -81,6 +81,7 @@ int8_t lr_gc_make_req(int8_t t_num){
 	gc_req->end_req=lr_gc_end_req;
 	gc_req->isgc=true;
 	threadset_gc_assign(&processor,gc_req);
+	pthread_mutex_unlock(&processor.gc_lock);
 	return 0;
 }
 int make_cnt=1;
@@ -130,8 +131,9 @@ int8_t lr_make_req(req_t *r){
 		/*
 		if(th_req->type==LR_WRITE_T)
 			MS(&mas2);*/
-/*		if(th_req->type==LR_READ_T)
-			MS(&mas);*/
+		if(th_req->type==LR_READ_T){
+			measure_init(&th_req->mt);
+		}
 		threadset_assign(&processor,th_req);		
 		/*if(th_req->type==LR_READ_T)
 			MA(&mas);*//*
@@ -150,6 +152,7 @@ int8_t lr_end_req(lsmtree_req_t *r){
 	KEYT key;
 	char *value;
 	void *data=NULL;
+	struct timeval s;
 	switch(r->type){
 		case LR_DELETE_PR:
 			value=(char*)r->params[2];
@@ -178,7 +181,11 @@ int8_t lr_end_req(lsmtree_req_t *r){
 			parent->keys=r->keys;
 			parent->dmatag=r->dmatag;
 			//cache_input(&processor.mycache,parent->flag,(sktable*)r->keys,r->dmatag);
+		//	printf("?");
+			//parent->lock_test=0;
 			pthread_mutex_unlock(&parent->meta_lock);
+			gettimeofday(&s,NULL);
+			//printf("a:%llu\n",s.tv_sec * 1000000 + s.tv_usec);
 			threadset_read_assign(&processor,parent);
 		//	while(!parent->meta->enqueue(data)){}
 			//memcpy(parent->res,r->keys,PAGESIZE);

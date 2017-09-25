@@ -47,9 +47,15 @@ typedef struct threadset{
 #endif
 	threading threads[THREADNUM];
 	threading gc_thread;
+#ifdef MULTIQ
+	mpmc_bounded_queue_t<void *>* req_q;
+	mpmc_bounded_queue_t<void *> *read_q;
+	mpmc_bounded_queue_t<void *>* gc_q;
+#else
 	spsc_bounded_queue_t<void *>* req_q;
 	spsc_bounded_queue_t<void *> *read_q;
 	spsc_bounded_queue_t<void *>* gc_q;
+#endif
 	//queue *gc_q;
 	int activatednum;
 	int max_act;

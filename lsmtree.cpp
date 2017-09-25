@@ -269,8 +269,10 @@ int thread_level_get(lsmtree *LSM,KEYT key, threading *input, char *ret, lsmtree
 		input->header_read++;
 		skiplist_meta_read_n(temp->pbn,LSM->dfd,0,req);
 		return 3;
-	}
-	printf("level : %d\n",l);
+	}/*
+	printf("%d-----------------------------\n",key);
+	sktable_print(sk);
+	printf("------------------------------\n");*/
 	return returnflag;
 }
 int thread_get(lsmtree *LSM, KEYT key, threading *input, char *ret,lsmtree_req_t* req){
@@ -299,15 +301,13 @@ int thread_get(lsmtree *LSM, KEYT key, threading *input, char *ret,lsmtree_req_t
 
 	int flag=0;
 	keyset *temp_key=NULL;
-
+	static int __ppa=0;
 	bool metaflag;
 	req->type=DISK_READ_T;
 	for(int i=0; i<LEVELN; i++){
 		metaflag=false;
 		req->flag=i;
-
 		temp_key=cache_level_find(&input->master->mycache,i,key);
-
 		if(temp_key!=NULL){
 			if(temp_key->ppa==DELETEDKEY){
 				printf("[%u]deleted\n",temp_key->key);
@@ -315,7 +315,11 @@ int thread_get(lsmtree *LSM, KEYT key, threading *input, char *ret,lsmtree_req_t
 			}
 			skiplist_keyset_read(temp_key,ret,LSM->dfd,req);
 			return 1;
-		}
+		}/*
+		keyset test;
+		test.ppa=__ppa++;
+		skiplist_keyset_read(&test,ret,LSM->dfd,req);
+		return 1;*/
 
 		Entry *temp=level_find(LSM->buf.disk[i],key);
 		int return_flag=3;
@@ -327,10 +331,16 @@ int thread_get(lsmtree *LSM, KEYT key, threading *input, char *ret,lsmtree_req_t
 			continue;
 		}
 #endif
+		struct timeval s;
 		for(int j=0; j<WAITREQN; j++){
 			if(input->pre_req[j]!=NULL){
 				if(temp==input->entry[j]){
+					gettimeofday(&s,NULL);
+					//printf("s:%llu\n",s.tv_sec * 1000000 + s.tv_usec);
 					pthread_mutex_lock(&input->pre_req[j]->meta_lock);
+					//while(input->pre_req[j]->lock_test){}
+					gettimeofday(&s,NULL);
+					//printf("w:%llu\n",s.tv_sec * 1000000 + s.tv_usec);
 					return_flag=4;
 					sktable *sk=(sktable *)input->pre_req[j]->keys;
 					temp_key=skiplist_keyset_find(sk,key);
@@ -360,6 +370,7 @@ int thread_get(lsmtree *LSM, KEYT key, threading *input, char *ret,lsmtree_req_t
 			if(input->pre_req[j]==NULL){
 				input->pre_req[j]=req;
 				input->entry[j]=temp;
+//				input->pre_req[j]->lock_test=1;
 				pthread_mutex_lock(&req->meta_lock);
 				break;
 			}
@@ -377,6 +388,7 @@ lsmtree* lsm_reset(lsmtree* input){
 }
 bool compaction(lsmtree *LSM,level *src, level *des,Entry *ent,lsmtree_gc_req_t * req){
 	static int wn=0;
+//	printf("compaction called!\n");
 	KEYT s_start,s_end;
 	if(src==NULL){
 		s_start=ent->key;

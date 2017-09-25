@@ -105,6 +105,12 @@ static int getLevel(){
 	return level;
 }
 
+void sktable_print(sktable *sk){
+	for(int i=0; i<KEYN; i++){
+		printf("%u:%u\n",sk->meta[i].key,sk->meta[i].ppa);
+	}
+}
+
 int skiplist_delete(skiplist* list, KEYT key){
 	if(list->size==0)
 		return -1;
@@ -167,7 +173,7 @@ snode *skiplist_insert(skiplist *list,KEYT key, char *value, lsmtree_req_t* req,
 			if(x->vflag){ //update
 				if(x->req!=NULL){
 #ifdef ENABLE_LIBFTL
-					memio_free_dma(1,x->req>req->dmaTag);
+					memio_free_dma(1,x->req->req->dmaTag);
 #else
 					free(x->req->req->value);
 #endif
@@ -422,6 +428,7 @@ KEYT skiplist_meta_write(skiplist *data,int fd, lsmtree_gc_req_t *req,double fpr
 	snode *temp=data->header->list[1];
 	KEYT temp_pp;
 	temp_pp=getPPA(header_segment,(void*)req);
+	int test=0;
 	for(int j=0;j<1; j++){
 		lsmtree_gc_req_t *temp_req=(lsmtree_gc_req_t*)malloc(sizeof(lsmtree_gc_req_t));
 		temp_req->isgc=true;
@@ -447,6 +454,12 @@ KEYT skiplist_meta_write(skiplist *data,int fd, lsmtree_gc_req_t *req,double fpr
 			int bit_n=i/8;
 			int offset=i%8;
 			temp_req->keys[i].key=temp->key;
+			if(test<temp->key){
+				test=temp->key;
+			}
+			else{
+				printf("??");
+			}
 			temp_req->keys[i].ppa=temp->ppa;
 			if(temp->vflag){
 				data->bitset[bit_n] |= (1<<offset);	
@@ -463,6 +476,8 @@ KEYT skiplist_meta_write(skiplist *data,int fd, lsmtree_gc_req_t *req,double fpr
 			temp_req->keys[i].ppa=NODATA;
 		}
 		//oob
+		sktable test_sk;
+		memcpy(&test_sk,temp_req->keys,PAGESIZE);
 		uint64_t temp_oob=0;
 		KEYSET(temp_oob,temp_req->keys[i].key);
 		FLAGSET(temp_oob,0);
@@ -490,6 +505,7 @@ KEYT skiplist_data_write(skiplist *data,int fd,lsmtree_gc_req_t * req){
 	//MS(&mt);
 	while(temp!=data->header){
 		child_req=temp->req;
+		child_req->type=LR_DDW_T;
 		child_req->end_req=lr_end_req;
 		//	child_req->parent=(lsmtree_req_t*)req;
 		if(temp->vflag){

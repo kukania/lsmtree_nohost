@@ -5,7 +5,7 @@
 #include"threading.h"
 #include"delete_set.h"
 #include"ppa.h"
-#ifndef ENABLE_LIBFTL
+#ifdef ENABLE_LIBFTL
 #include"libmemio.h"
 #endif
 #include<sys/types.h>
@@ -91,8 +91,8 @@ int main(){
 		lr_make_req(req);
 	}
 	//printf("throw all write req!\n");
-	threadset_request_wait(&processor);
-	threadset_gc_wait(&processor);
+	//threadset_request_wait(&processor);
+	//threadset_gc_wait(&processor);
 	measure_end(&mt,"write_wait");
 	printf("write end!!\n");/*
 	for(int i=0; i<INPUTSIZE/10; i++){
@@ -126,6 +126,7 @@ int main(){
 		utils_flag=true;
 		if(SEQUENCE==0){
 			key=keys[i-1];
+	//		key=rand()%INT_MAX;
 		}
 		else{
 			key=i;

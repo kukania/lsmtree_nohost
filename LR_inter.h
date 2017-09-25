@@ -7,8 +7,8 @@
 #include"utils.h"
 #include"bptree.h"
 //#include"lockfreeq.h"
-#ifndef LIBLSM
-//#include"request.h"
+#ifdef SERVER
+#include"request.h"
 #endif
 /**request type***/
 #define LR_READ_T 	32
@@ -60,6 +60,7 @@ typedef struct lsmtree_gc_req_t{
 	sktable *compt_headers;
 	skiplist * skip_data;
 	char *data;
+	bool lock_test;
 
 	MeasureTime mt;
 }lsmtree_gc_req_t;
@@ -82,6 +83,7 @@ typedef struct lsmtree_req_t{
 	struct lsmtree_gc_req_t *gc_parent;
 	Entry *dummy;
 	char *data;
+	bool lock_test;
 
 	MeasureTime mt;
 }lsmtree_req_t;

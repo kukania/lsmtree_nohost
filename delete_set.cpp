@@ -81,9 +81,13 @@ int delete_trim_process_header(delete_set *set){
 		return 0;
 	int invalids=set->blocks[block_num].invalid_n;
 	if(invalids==PAGENUM){
+		//send trim process
+#ifdef ENABLE_LIBFTL
+		memio_trim(mio,PAGENUM*set->blocks[block_num].number,SEGSIZE);
+#endif
 		segment_block_oob_clear(set,block_num);
 		segment_block_init(set,block_num);
-		//send trim process
+		
 		return 1;
 	}
 	else{
@@ -174,6 +178,9 @@ int delete_trim_process_header(delete_set *set){
 			if(stop_flag)
 				break;
 		}
+#ifdef ENABLE_LIBFTL
+		memio_trim(mio,PAGENUM*set->blocks[block_num].number,SEGSIZE);
+#endif
 		segment_block_oob_clear(set,block_num);
 		segment_block_init(set,block_num);
 		segment_block_change(set,block_num);
@@ -186,6 +193,9 @@ int delete_trim_process_data(delete_set *set){
 		return 0;
 	int invalids=set->blocks[block_num].invalid_n;
 	if(invalids==PAGENUM){
+#ifdef ENABLE_LIBFTL
+		memio_trim(mio,PAGENUM*set->blocks[block_num].number,SEGSIZE);
+#endif
 		segment_block_oob_clear(set,block_num);
 		segment_block_init(set,block_num);
 		//send trim operation
@@ -339,6 +349,9 @@ int delete_trim_process_data(delete_set *set){
 			if(stop_flag)
 				break;
 		}
+#ifdef ENABLE_LIBFTL
+		memio_trim(mio,PAGENUM*set->blocks[block_num].number,SEGSIZE);
+#endif
 		segment_block_oob_clear(set,block_num);
 		segment_block_init(set,block_num);
 		segment_block_change(set,block_num);

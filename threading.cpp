@@ -10,6 +10,7 @@
 #include<inttypes.h>
 #include<signal.h>
 #include<errno.h>
+#include<unistd.h>
 
 #define __STDC_FORMAT_MACROS
 extern threadset processor;
@@ -64,6 +65,7 @@ void threadset_init(threadset* input){
 	pthread_mutex_init(&input->req_lock,NULL);
 	pthread_mutex_init(&input->th_cnt_lock,NULL);
 	pthread_mutex_init(&input->gc_lock,NULL);
+	pthread_mutex_lock(&input->gc_lock);
 
 	pthread_mutex_init(&read_lock,NULL);
 	pthread_cond_init(&read_cond,NULL);
@@ -86,9 +88,15 @@ void threadset_init(threadset* input){
 	input->counter=0;
 	input->errcnt=0;
 #endif
+#ifdef MULTIQ
+	input->req_q=new mpmc_bounded_queue_t<void*>(THREADQN);
+	input->read_q=new mpmc_bounded_queue_t<void*>(THREADQN);
+	input->gc_q=new mpmc_bounded_queue_t<void*>(2);
+#else
 	input->req_q=new spsc_bounded_queue_t<void*>(THREADQN);
 	input->read_q=new spsc_bounded_queue_t<void*>(THREADQN);
 	input->gc_q=new spsc_bounded_queue_t<void*>(2);
+#endif
 	//	input->req_q=create_queue();
 
 	cache_init(&input->mycache);
@@ -118,6 +126,7 @@ void threadset_clear(threadset *input){
 
 	cache_clear(&input->mycache);
 }
+bool read_flag;
 void* thread_gc_main(void *input){
 	int number=0;
 	threadset *master=(threadset*)input;
@@ -125,7 +134,10 @@ void* thread_gc_main(void *input){
 	while(1){
 		lsmtree_gc_req_t *lsm_req;
 		void *req_data;	
-		while(!master->gc_q->dequeue(&req_data)){}
+		while(!master->gc_q->dequeue(&req_data)){
+			pthread_mutex_lock(&master->gc_lock);
+		}
+		if(read_flag) break;
 		lsm_req=(lsmtree_gc_req_t*)req_data;
 		if(lsm_req==NULL){
 			pthread_mutex_lock(&myth->terminate);
@@ -203,8 +215,17 @@ void* thread_gc_main(void *input){
 	}
 	return NULL;
 }
+bool check_flll=0;
 void* thread_main(void *input){
 	int cnt=0;
+	//
+	cpu_set_t cpuset;
+   	CPU_ZERO(&cpuset);
+   	CPU_SET(3, &cpuset);
+	pthread_t current_thread = pthread_self();
+	pthread_setaffinity_np(current_thread, sizeof(cpu_set_t), &cpuset);
+	//nice(-20);
+	//*/
 	threadset *master=(threadset*)input;
 	int number;
 	for(int i=0; i<THREADNUM; i++){
@@ -227,7 +248,15 @@ void* thread_main(void *input){
 				break;
 			}
 			break;
+		}/*
+		if(check_flll==0){
+			check_flll=true;
+			MS(&gt);
 		}
+		else{
+			MT(&gt);
+			MS(&gt);
+		}*/
 		lsm_req=(lsmtree_req_t*)data;
 		pthread_mutex_lock(&myth->terminate);
 		if(myth->terminateflag){
@@ -250,7 +279,7 @@ void* thread_main(void *input){
 					if(test_num<=0){
 						printf("[%u]not_found\n",*key);
 #ifdef SERVER
-						lsm_req->req->type_info->type=-1
+						lsm_req->req->type_info->type=-1;
 #endif
 						lsm_req->end_req(lsm_req);
 					}
@@ -264,7 +293,7 @@ void* thread_main(void *input){
 					if(test_num==0){
 						printf("[%u]not_found\n",*key);
 #ifdef SERVER
-						lsm_req->req->type_info->type=-1
+						lsm_req->req->type_info->type=-1;
 #endif
 						lsm_req->end_req(lsm_req);
 					}
@@ -332,7 +361,9 @@ void threadset_gc_wait(threadset *input){
 	while(gc_end_check){}
 }
 void threadset_read_wait(threadset *input){
-	while(read_end_check!=INPUTSIZE){}
+	while(read_end_check<=INPUTSIZE-3){
+		printf("%d\n",read_end_check);
+	}
 }
 void threadset_request_wait(threadset *input){
 	while(write_end_check){
