@@ -77,6 +77,8 @@ int main(){
 		req->type=1;
 		if(SEQUENCE==0){
 			key=keys[i-1];
+			if(key==1)
+			printf("test\n");
 		}
 		else{
 			key=i;
@@ -105,7 +107,7 @@ int main(){
 	threadset_request_wait(&processor);
 	threadset_gc_wait(&processor);
 	printf("delete end!!\n");
-	while(delete_trim_process_header(header_segment)){
+	while(delete_trim_process_data(data_segment)){
 		printf("deleted!\n");
 	}*//*
 	for(int i=0; i<LEVELN; i++){

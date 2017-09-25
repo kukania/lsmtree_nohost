@@ -244,6 +244,12 @@ int delete_trim_process_data(delete_set *set){
 					if(header==NULL)
 						continue;
 					else{
+						//bloofilter check
+#ifdef BLOOM
+						if(!bf_check(header->filter,key)){
+							continue;
+						}
+#endif
 						//header read
 						req=delete_make_req(0);
 						sktable *sk_header=(sktable*)malloc(sizeof(sktable));

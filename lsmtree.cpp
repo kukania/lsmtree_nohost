@@ -375,6 +375,16 @@ lsmtree* lsm_reset(lsmtree* input){
 	input->memtree=skiplist_init(input->memtree);
 	return input;
 }
+#ifdef Tiering
+bool compaction(lsmtree *LSM,level *src, level *des, Entry *ent, lsmtree_gc_req_t *req){
+	if(src==NULL){//just input to des 
+	
+	}
+	else{
+	
+	}
+}
+#else
 bool compaction(lsmtree *LSM,level *src, level *des,Entry *ent,lsmtree_gc_req_t * req){
 	static int wn=0;
 	KEYT s_start,s_end;
@@ -468,10 +478,7 @@ bool compaction(lsmtree *LSM,level *src, level *des,Entry *ent,lsmtree_gc_req_t 
 			lr_gc_req_wait(req);
 			level_iter=level_get_Iter(src);
 			counter=0;
-		//	BF *filter;
 			while((iter_temp=level_get_next(level_iter))!=NULL){
-	//			delete_ppa(header_segment,iter_temp->pbn);
-	//			KEYT temp_pbn=sktable_meta_write(&req->compt_headers[counter++],req,LSM->dfd,(void**)&filter,des->fpr);
 				Entry* copied_entry=level_entry_copy(iter_temp);
 				iter_temp->bitset=NULL;
 				bf_free(copied_entry->filter);
@@ -480,8 +487,6 @@ bool compaction(lsmtree *LSM,level *src, level *des,Entry *ent,lsmtree_gc_req_t 
 					bf_set(copied_entry->filter,req->compt_headers[counter].meta[i].key);
 				}
 				counter++;
-//				copied_entry->filter=filter;
-//				copied_entry->pbn=temp_pbn;
 				level_insert(des,copied_entry);
 			}
 			free(level_iter);
@@ -577,6 +582,7 @@ bool compaction(lsmtree *LSM,level *src, level *des,Entry *ent,lsmtree_gc_req_t 
 	LSM->buf.lastB=last;
 	return true;
 }
+#endif
 bool is_compt_needed(lsmtree *input, KEYT level){
 	if(input->buf.disk[level-1]->size<input->buf.disk[level-1]->m_size){
 		return false;

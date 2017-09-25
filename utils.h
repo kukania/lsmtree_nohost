@@ -9,9 +9,10 @@
 #define PAGESIZE (8192)
 #define MUL 24
 #define LEVELN 5
-#define INPUTSIZE (1024*128*16)
+#define INPUTSIZE (1024*128*8)
 #define BLOOM
 #define MONKEY_BLOOM
+#define Tiering
 #define BUSYPOINT 0.7
 #define THREADQN 1024
 #define THREADNUM 1

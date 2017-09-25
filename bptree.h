@@ -45,19 +45,19 @@ typedef struct iterator{
 	int idx;
 }Iter;
 
-Node *level_find_leafnode(level *lev, KEYT key);
+Node *level_find_leafnode(level *lev, KEYT key);//
 Entry *make_entry(KEYT start, KEYT end,KEYT pbn);
 Entry *level_entry_copy(Entry *);
 level* level_init(level*,int size);
 Entry *level_find(level*,KEYT key);
-Entry *level_get_victim(level *);
+Entry *level_get_victim(level *);//
 Entry **level_range_find(level *,KEYT start,KEYT end);
 Node *level_insert(level*,Entry *);
 Node *level_delete(level*,KEYT);
-Entry *level_getFirst(level *);
+Entry *level_getFirst(level *);//
 Entry *level_get_next(Iter *);
 Iter* level_get_Iter(level *);
 void level_print(level *);
-void free_entry(Entry *);
+void free_entry(Entry *);//
 void level_free(level*);
 #endif
