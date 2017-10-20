@@ -55,8 +55,9 @@ LEVELN+1=last
 KEYT write_data(lsmtree *LSM,skiplist *input,lsmtree_gc_req_t *req,double fpr){
 	return skiplist_write(input,req,LSM->dfd,LSM->dfd,fpr);
 }
-int write_meta_only(lsmtree *LSM, skiplist *data,lsmtree_gc_req_t * input,double fpr){
-	return skiplist_meta_write(data,LSM->dfd,input,fpr);
+KEYT write_meta_only(lsmtree *LSM, skiplist *data,lsmtree_gc_req_t * input,double fpr){
+	KEYT res=skiplist_meta_write(data,LSM->dfd,input,fpr);
+	return res;
 }
 
 lsmtree* init_lsm(lsmtree *res){
@@ -430,6 +431,7 @@ bool compaction(lsmtree *LSM,level *src, level *des,Entry *ent,lsmtree_gc_req_t 
 			delete_pbas[counter]=temp_e->pbn;
 			delete_bitset[counter]=temp_e->bitset;
 			delete_sets[deleteIdx++]=temp_e->key;
+			temp_e->iscompactioning=true;
 			skiplist_meta_read_c(temp_e->pbn,LSM->dfd,counter++,req);
 		}
 		if(src!=NULL){
@@ -438,6 +440,7 @@ bool compaction(lsmtree *LSM,level *src, level *des,Entry *ent,lsmtree_gc_req_t 
 			while((iter_temp=level_get_next(level_iter))!=NULL){
 				delete_pbas[counter]=iter_temp->pbn;
 				delete_bitset[counter]=iter_temp->bitset;
+				iter_temp->iscompactioning=true;
 				skiplist_meta_read_c(iter_temp->pbn,LSM->dfd,counter++,req);
 			}
 			free(level_iter);
@@ -511,6 +514,8 @@ bool compaction(lsmtree *LSM,level *src, level *des,Entry *ent,lsmtree_gc_req_t 
 		int getIdx=0;
 		skiplist *t;
 		snode *temp_s;
+		bool __check_flag=false;
+		KEYT __check_key=0;
 		for(int i=0; i<allnumber; i++){
 			sktable *sk=&req->compt_headers[i];
 			uint8_t *temp_bit=delete_bitset[i];
@@ -518,6 +523,14 @@ bool compaction(lsmtree *LSM,level *src, level *des,Entry *ent,lsmtree_gc_req_t 
 				int bit_n=k/8;
 				int off=k%8;
 				if(sk->meta[k].key==NODATA) continue;
+				/*
+				if(sk->meta[k].ppa==32776 && __check_flag==false){
+					printf("in compaction\n");
+					__check_key=sk->meta[k].key;
+					__check_flag=true;
+				}
+				if(sk->meta[k].key==__check_key && __check_flag){
+				}*/
 				if(temp_bit[bit_n] & (1<<off)){
 					temp_s=skiplist_insert(last,sk->meta[k].key,NULL,NULL,true);
 				}

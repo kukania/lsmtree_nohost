@@ -7,6 +7,7 @@
 #include"ppa.h"
 #ifdef ENABLE_LIBFTL
 #include"libmemio.h"
+extern memio* mio;
 #endif
 #include<sys/types.h>
 #include<sys/stat.h>
@@ -32,7 +33,6 @@ extern MeasureTime find;
 
 
 extern pthread_mutex_t endR;
-extern memio* mio;
 extern timeval max_time;
 extern int big_time_check;
 extern timeval max_time1,adding;
@@ -68,7 +68,7 @@ int main(){
 	measure_start(&mt);
 	keys=(KEYT*)malloc(sizeof(KEYT)*INPUTSIZE);
 	for(int i=0; i<INPUTSIZE; i++){
-		keys[i]=rand()%UINT_MAX+1;
+		keys[i]=rand()%(16*128*1024)+1;
 	}
 	int cnt=1;
 	for(int i=1; i<=INPUTSIZE; i++){

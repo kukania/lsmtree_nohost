@@ -15,10 +15,9 @@ CFLAGS  +=\
 		  -DCONFIG_ENABLE_DEBUG \
 		  -DUSE_PMU \
 		  -DUSE_NEW_RMW \
+		  -DLIBLSM\
+		  #-DSERVER\
 		  -DENABLE_LIBFTL\
-		  -DSERVER\
-		  -DMULTIQ\
-#		  -DLIBLSM\
 
 
 INCLUDES :=     -I$(PWD) \

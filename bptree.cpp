@@ -40,7 +40,7 @@ Entry *make_entry(KEYT key,KEYT end,KEYT pbn1){
 		sleep(10);
 	res->version=0;
 	res->parent=NULL;
-	res->gc_cache=false;
+	res->iscompactioning=false;
 	return res;
 }
 Entry *level_entry_copy(Entry *input){

@@ -43,7 +43,6 @@ void delete_ppa(delete_set *set,KEYT input){
 	int bit_num=offset_meta/8;
 	int offset=offset_meta%8;
 
-	block_num-=set->start_block_n;
 	uint8_t target=1;
 	uint8_t test=1;
 	target=target<<offset;
@@ -87,7 +86,7 @@ int delete_trim_process_header(delete_set *set){
 #endif
 		segment_block_oob_clear(set,block_num);
 		segment_block_init(set,block_num);
-		
+
 		return 1;
 	}
 	else{
@@ -136,18 +135,15 @@ int delete_trim_process_header(delete_set *set){
 				}
 				KEYT key=KEYGET(temp_oob);
 				Entry *header=NULL;
+				int level_num=0;
 				for(int i=0; i<LEVELN; i++){
 					header=level_find(LSM->buf.disk[i],key);
+					level_num=i;
 					if(header!=NULL && header->pbn==temp_p_key)
 						break;
 				}
-				if(header==NULL){
-					printf("??\n");
-				}
-				for(int i=0; i<LEVELN; i++){
-					header=level_find(LSM->buf.disk[i],key);
-					if(header!=NULL && header->pbn==temp_p_key)
-						break;
+				if(header->iscompactioning){
+					continue;
 				}
 				uint64_t new_oob=0;
 
@@ -169,7 +165,8 @@ int delete_trim_process_header(delete_set *set){
 				write(LSM->dfd,temp_p,PAGESIZE);
 				req->end_req(req);				
 #endif
-				KEYT temp_pba=header->pbn;
+				KEYT temp_pba;
+				temp_pba=header->pbn;
 				header->pbn=new_pba;
 				oob[header->pbn]=new_oob;
 				delete_ppa(set,temp_pba);
@@ -249,12 +246,16 @@ int delete_trim_process_data(delete_set *set){
 				KEYT key=KEYGET(temp_oob);
 				Entry *header;
 				KEYT new_ppa=getRPPA(set,NULL);
+				bool succ_flag=false;
 				for(int k=0; k<LEVELN; k++){ //header find
 					header=level_find(LSM->buf.disk[k],key);
 					if(header==NULL)
 						continue;
 					else{
 						//header read
+						if(!bf_check(header->filter,key)){
+							continue;
+						}
 						req=delete_make_req(0);
 						sktable *sk_header=(sktable*)malloc(sizeof(sktable));
 						req->params[2]=(void*)sk_header;
@@ -286,6 +287,7 @@ int delete_trim_process_data(delete_set *set){
 						keyset *target;
 						if((target=skiplist_keyset_find(sk_header,key))){
 							if(target->ppa==temp_p_key){
+								succ_flag=true;
 								target->ppa=new_ppa;//update
 								req=delete_make_req(1);
 								uint64_t new_oob_pba=0;
@@ -315,7 +317,7 @@ int delete_trim_process_data(delete_set *set){
 							}
 							else{
 								free(sk_header);
-								break; //deprecated data!!, old data
+								continue; //deprecated data!!, old data
 							}
 						}
 						else{
@@ -323,6 +325,10 @@ int delete_trim_process_data(delete_set *set){
 							continue;
 						}
 					}
+				}
+				if(!succ_flag){
+					printf("deprecated data! %d\n",temp_p_key);
+					exit(1);
 				}
 				//write data
 				uint64_t new_oob=0;

@@ -13,7 +13,7 @@ typedef struct Entry{
 	KEYT version;
 	KEYT end;
 	KEYT pbn;
-	bool gc_cache;
+	bool iscompactioning;
 	uint8_t *bitset;
 #ifdef BLOOM
 	BF *filter;
