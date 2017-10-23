@@ -482,9 +482,6 @@ KEYT skiplist_meta_write(skiplist *data,int fd, lsmtree_gc_req_t *req,double fpr
 		KEYSET(temp_oob,temp_req->keys[0].key);
 		FLAGSET(temp_oob,0);
 		oob[temp_pp]=temp_oob;
-		if(temp_pp==17880){
-			printf("stop!\n");
-		}
 #ifndef ENABLE_LIBFTL
 		pthread_mutex_lock(&dfd_lock);
 		if(lseek64(fd,((off64_t)PAGESIZE)*temp_pp,SEEK_SET)==-1)

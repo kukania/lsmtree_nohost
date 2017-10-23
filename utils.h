@@ -7,12 +7,12 @@
 #define KEYT uint32_t
 #define KEYN 1024
 #define PAGESIZE (8192)
-#define MUL 24
+#define MUL 5
 #define LEVELN 5
 #define INPUTSIZE (1024*128*32)
 
 #define BLOOM
-//#define MONKEY_BLOOM
+#define MONKEY_BLOOM
 #define BUSYPOINT 0.7
 #define THREADQN 1024
 #define THREADNUM 1
@@ -36,8 +36,8 @@
 
 #define PAGENUM (1<<14)
 #define SEGSIZE (1<<27)
-#define SEGNUM  (20*8) 
-#define MAXPAGE (20*8*(1<<14)) //1G=8*(1<<14)
+#define SEGNUM  (200*8) 
+#define MAXPAGE (200*8*(1<<14)) //1G=8*(1<<14)
 #define MAXPPH	(2*4096);
 #define DTPBLOCK (4)
 

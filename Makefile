@@ -16,6 +16,7 @@ CFLAGS  +=\
 		  -DUSE_PMU \
 		  -DUSE_NEW_RMW \
 		  -DLIBLSM\
+		  -DCALL_STACK\
 		  #-DSERVER\
 		  -DENABLE_LIBFTL\
 

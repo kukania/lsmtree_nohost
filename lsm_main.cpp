@@ -68,7 +68,7 @@ int main(){
 	measure_start(&mt);
 	keys=(KEYT*)malloc(sizeof(KEYT)*INPUTSIZE);
 	for(int i=0; i<INPUTSIZE; i++){
-		keys[i]=rand()%(16*128*1024)+1;
+		keys[i]=rand()%(INPUTSIZE)+1;
 	}
 	int cnt=1;
 	for(int i=1; i<=INPUTSIZE; i++){
@@ -119,6 +119,7 @@ int main(){
 	//pthread_create(&thr,NULL,util_check,NULL);
 	printf("read!\n");
 	measure_start(&mt);
+	
 	//printf("??");
 	for(int i=1; i<=INPUTSIZE; i++){
 		req=(req_t*)malloc(sizeof(req_t));

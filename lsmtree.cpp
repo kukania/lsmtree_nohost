@@ -387,9 +387,38 @@ lsmtree* lsm_reset(lsmtree* input){
 	input->memtree=skiplist_init(input->memtree);
 	return input;
 }
+void level_1(){
+	//printf("1\n");
+}
+void level_2(){
+	//printf("2\n");
+}
+void level_3(){
+	//printf("3\n");
+}
+void level_4(){
+	//printf("4\n");
+}
+
 bool compaction(lsmtree *LSM,level *src, level *des,Entry *ent,lsmtree_gc_req_t * req){
 	static int wn=0;
 //	printf("compaction called!\n");
+#ifdef CALL_STACK
+	if(src!=NULL){
+		if(src->m_size<=MUL){
+			level_1();
+		}
+		else if(src->m_size<=MUL*MUL){
+			level_2();
+		}
+		else if(src->m_size<=MUL*MUL*MUL){
+			level_3();
+		}
+		else if(src->m_size<=MUL*MUL*MUL*MUL){
+			level_4();
+		}
+	}
+#endif
 	KEYT s_start,s_end;
 	if(src==NULL){
 		s_start=ent->key;

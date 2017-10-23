@@ -33,8 +33,8 @@ void delete_init(){//for test
 	memset(oob,0,(MAXPAGE)*sizeof(uint64_t));
 	data_segment=(delete_set*)malloc(sizeof(delete_set));
 	header_segment=(delete_set *)malloc(sizeof(delete_set));
-	segment_init(header_segment,0,1,false);//
-	segment_init(data_segment,2,SEGNUM-3,true); // 0~SEGNUM-4, reserve SEGNUM-3
+	segment_init(header_segment,0,3,false);//
+	segment_init(data_segment,4,SEGNUM-3,true); // 0~SEGNUM-4, reserve SEGNUM-3
 }
 void delete_ppa(delete_set *set,KEYT input){
 	int block_num=input/PAGENUM;
@@ -53,7 +53,7 @@ void delete_ppa(delete_set *set,KEYT input){
 		if(!(test&set->blocks[i].bitset[bit_num])) continue;
 		set->blocks[i].bitset[bit_num] &= target;
 		set->blocks[i].invalid_n++;
-		if(set->blocks[block_num].invalid_n > PAGENUM){
+		if(set->blocks[i].invalid_n > PAGENUM){
 			printf("over block! : %d\n",set->blocks[block_num].number);	
 			exit(1);
 		}
