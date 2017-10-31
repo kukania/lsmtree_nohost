@@ -289,8 +289,6 @@ int8_t lr_gc_end_req(lsmtree_gc_req_t *r){
 			gc_end_check--;
 			pthread_mutex_unlock(&gc_cnt_lock);
 			pthread_mutex_destroy(&r->meta_lock);
-			if(r->compt_headers!=NULL)
-				free(r->compt_headers);
 			break;
 	}
 	free(r);

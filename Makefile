@@ -16,6 +16,7 @@ CFLAGS  +=\
 		  -DUSE_PMU \
 		  -DUSE_NEW_RMW \
 		  -DLIBLSM\
+		  -DMEMORYCHECK\
 		  #-DSERVER\
 		  -DENABLE_LIBFTL\
 
@@ -61,8 +62,8 @@ TARGETOBJ :=\
 
 all : LIBLSM
 
-bloomfilter: bloomfilter.cpp bloomfilter.h
-	g++ -DCPP -g -o bf_test bloomfilter.c
+bloomfilter: bloomfilter.cpp bloomfilter.h bf_test.c utils.h
+	g++ -DCPP -g -o bf bf_test.c bloomfilter.cpp
 
 test: liblsm.a test.c
 	$(CC) $(INCLUDES) $(CFLAGS) -o $@ test.c liblsm.a $(LIBS)

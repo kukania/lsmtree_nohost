@@ -248,7 +248,15 @@ void skiplist_free(skiplist *list){
 		free(temp->list);
 		//free(temp->req->req->value);
 		//free(temp->req->req);
-		free(temp->req);
+		if(temp->req!=NULL){
+#ifndef SERVER
+			if(temp->req->req!=NULL){
+				free(temp->req->req->value);
+				free(temp->req->req);
+			}
+#endif
+			free(temp->req);
+		}
 		free(temp);
 		temp=next_node;
 	}
@@ -539,6 +547,7 @@ KEYT skiplist_data_write(skiplist *data,int fd,lsmtree_gc_req_t * req){
 			child_req->end_req(child_req);
 #endif
 		}
+		temp->req=NULL;
 		temp=temp->list[1];
 	}
 	//ME(&mt,"memio_write");

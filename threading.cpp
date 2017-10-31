@@ -136,6 +136,11 @@ void* thread_gc_main(void *input){
 		void *req_data;	
 		while(!master->gc_q->dequeue(&req_data)){
 			pthread_mutex_lock(&master->gc_lock);
+			if(myth->terminateflag)
+				break;
+#ifdef MEMORYCHECK
+			sleep(0.1);
+#endif
 		}
 		if(read_flag) break;
 		lsm_req=(lsmtree_gc_req_t*)req_data;
@@ -155,7 +160,6 @@ void* thread_gc_main(void *input){
 		}
 		else{
 			pthread_mutex_unlock(&myth->terminate);
-			//printf("[%d]doing!!",number);
 			lsmtree *LSM=(lsmtree*)lsm_req->params[3];
 			level* src,*des;
 			skiplist* data;
@@ -163,7 +167,6 @@ void* thread_gc_main(void *input){
 			KEYT *key;
 			Entry *result_entry;
 			bool flag=false;
-			//lsm_req->flag for oob
 			for(int i=LEVELN-1; i>=0; i--){
 				if(LSM->buf.disk[i]->size==0)
 					continue;
@@ -205,12 +208,10 @@ void* thread_gc_main(void *input){
 			lsm_req->target_number=0;
 			lsm_req->flag=1-1;//lsm_req->flag for oob
 			result_entry=make_entry(data->start,data->end,0);
-//			result_entry->bitset=data->bitset;
-//			skiplist_meta_free(data);
 			lsm_req->data=(char*)data;
 			compaction(LSM,NULL,LSM->buf.disk[0],result_entry,lsm_req);
 			lsm_req->end_req(lsm_req);
-			//printf("[%d]done-----\n",number++);
+			LSM->sstable=NULL;
 		}
 	}
 	return NULL;
@@ -241,6 +242,11 @@ void* thread_main(void *input){
 		lsmtree_req_t *lsm_req;
 		void *data=NULL;
 		while(1){
+#ifdef MEMORYCHECK
+			sleep(0.1);
+#endif
+			if(myth->terminateflag)
+				break;
 			if(!master->read_q->dequeue(&data)){
 				if(!master->req_q->dequeue(&data)){
 					continue;
@@ -351,22 +357,37 @@ void threadset_read_assign(threadset* input, lsmtree_req_t *req){
    */
 void threadset_assign(threadset* input, lsmtree_req_t *req){
 	while(!input->req_q->enqueue(req)){
+#ifdef MEMORYCHECK
+		sleep(0.1);
+#endif
 	}
 	pthread_cond_broadcast(&write_cond);
 }
 void threadset_gc_assign(threadset* input ,lsmtree_gc_req_t *req){
 	while(!input->gc_q->enqueue(req)){}
+#ifdef MEMORYCHECK
+		sleep(0.1);
+#endif
 }
 void threadset_gc_wait(threadset *input){
 	while(gc_end_check){}
+#ifdef MEMORYCHECK
+		sleep(0.1);
+#endif
 }
 void threadset_read_wait(threadset *input){
 	while(read_end_check<=INPUTSIZE-3){
 		printf("%d\n",read_end_check);
+#ifdef MEMORYCHECK
+		sleep(0.1);
+#endif
 	}
 }
 void threadset_request_wait(threadset *input){
 	while(write_end_check){
+#ifdef MEMORYCHECK
+		sleep(0.1);
+#endif
 	}
 }
 void threadset_end(threadset *input){
@@ -374,6 +395,7 @@ void threadset_end(threadset *input){
 	pthread_mutex_lock(&input->gc_thread.terminate);
 	input->gc_thread.terminateflag=true;
 	pthread_mutex_unlock(&input->gc_thread.terminate);
+	pthread_mutex_unlock(&input->gc_lock);
 	pthread_join(input->gc_thread.id,NULL);
 
 	threadset_request_wait(input);

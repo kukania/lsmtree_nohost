@@ -72,7 +72,9 @@ int main(){
 	}
 	int cnt=1;
 	for(int i=1; i<=INPUTSIZE; i++){
-		//printf("%d\n",i);
+		if(i%1024==1){
+			printf("%d\n",i);
+		}
 		req=(req_t*)malloc(sizeof(req_t));
 		req->type=1;
 		if(SEQUENCE==0){
@@ -117,10 +119,14 @@ int main(){
 	pthread_t thr;
 	processor.threads[0].flag=0;
 	//pthread_create(&thr,NULL,util_check,NULL);
+	/*
 	printf("read!\n");
 	measure_start(&mt);
 	//printf("??");
 	for(int i=1; i<=INPUTSIZE; i++){
+		if(i%1024==1){
+			printf("%d\n",i);
+		}
 		req=(req_t*)malloc(sizeof(req_t));
 		req->type=2;
 		utils_flag=true;
@@ -143,7 +149,7 @@ int main(){
 	}
 	//printf("throw all read req!\n");
 	threadset_read_wait(&processor);
-	measure_end(&mt,"read_end");
+	measure_end(&mt,"read_end");*/
 	utils_flag=false;
 	printf("meta_read_data:%d\n",meta_read_data);
 	//measure_end(&mt,"read_end");
@@ -166,7 +172,7 @@ int main(){
 	printf("1>>avg:%ld sec and %6.6f-%d\n",adding.tv_sec/end_counter,((float)adding.tv_usec/1000000),end_counter);
 	printf("max:%ld sec and %.6f\n",max_time.tv_sec,(float)max_time.tv_usec/1000000);
 	printf("over time (%d): %d\n",INPUTSIZE,big_time_check);*/
-	//lr_inter_free();
+	lr_inter_free();
 	/*
 	for(int i=0; i<LEVELN; i++){
 		printf("\n--------------[level %d]-------\n",i);

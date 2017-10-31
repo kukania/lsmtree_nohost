@@ -61,7 +61,8 @@ void free_entry(Entry *entry){
 	if(entry->bitset!=NULL)
 		free(entry->bitset);
 #ifdef BLOOM
-	bf_free(entry->filter);
+	if(entry->filter!=NULL)
+		bf_free(entry->filter);
 #endif
 	free(entry);
 }

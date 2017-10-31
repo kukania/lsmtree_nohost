@@ -333,6 +333,7 @@ int thread_get(lsmtree *LSM, KEYT key, threading *input, char *ret,lsmtree_req_t
 		}
 #endif
 		struct timeval s;
+if(SEQUENCE){/*
 		for(int j=0; j<WAITREQN; j++){
 			if(input->pre_req[j]!=NULL){
 				if(temp==input->entry[j]){
@@ -361,12 +362,14 @@ int thread_get(lsmtree *LSM, KEYT key, threading *input, char *ret,lsmtree_req_t
 					}
 				}
 			}
-		}
+		}*/
+}
 		if(metaflag){
 			req->dummy=temp;
 			req->seq_number+=111;
 			continue;
 		}
+if(SEQUENCE){/*
 		for(int j=0; j<WAITREQN; j++){
 			if(input->pre_req[j]==NULL){
 				input->pre_req[j]=req;
@@ -375,7 +378,8 @@ int thread_get(lsmtree *LSM, KEYT key, threading *input, char *ret,lsmtree_req_t
 				pthread_mutex_lock(&req->meta_lock);
 				break;
 			}
-		}
+		}*/
+}
 		input->header_read++;
 		skiplist_meta_read_n(temp->pbn,LSM->dfd,0,req);
 		return return_flag;
@@ -552,8 +556,10 @@ bool compaction(lsmtree *LSM,level *src, level *des,Entry *ent,lsmtree_gc_req_t 
 					temp_s->ppa=temp_iter->ppa;
 				temp_iter=temp_iter->list[1];
 			}
+			free_entry(ent);
+			skiplist_free(temp_skip);
 		}
-
+		
 		for(int i=0; i<deleteIdx; i++){
 			level_delete(des,delete_sets[i]);
 		}
@@ -573,6 +579,7 @@ bool compaction(lsmtree *LSM,level *src, level *des,Entry *ent,lsmtree_gc_req_t 
 			level_insert(des,temp_e);
 			skiplist_meta_free(t);
 		}
+		free(req->compt_headers);
 	}
 	if(delete_sets!=NULL){
 		free(delete_sets);

@@ -9,7 +9,7 @@
 #define PAGESIZE (8192)
 #define MUL 24
 #define LEVELN 5
-#define INPUTSIZE (1024*128*32)
+#define INPUTSIZE (1024*128*1)
 
 #define BLOOM
 //#define MONKEY_BLOOM
