@@ -32,10 +32,10 @@ LIBS    :=\
 	-lpthread\
 
 SRCS    :=\
-	bptree.cpp\
+	run_array.c\
 	skiplist.cpp\
 	LR_inter.cpp\
-	lsmtree.cpp\
+	lsmtree_re.cpp\
 	lsm_cache.c\
 	threading.cpp\
 	normal_queue.c\
@@ -43,6 +43,7 @@ SRCS    :=\
 	ppa.cpp\
 	delete_set.cpp\
 	bloomfilter.cpp\
+	#bptree.cpp\
 
 
 OBJS    :=\
@@ -55,6 +56,9 @@ TARGETOBJ :=\
 	$(addprefix object/,$(OBJS))\
 
 all : LIBLSM
+
+run:utils.h run_array.h run_array.c
+	g++ -DCPP -g -o run_test run_array.c
 
 bloomfilter: bloomfilter.cpp bloomfilter.h
 	g++ -DCPP -g -o bf_test bloomfilter.c

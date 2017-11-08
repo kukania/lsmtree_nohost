@@ -315,11 +315,17 @@ int8_t lr_is_gc_needed(){
 	for(int i=LEVELN-1; i>=0; i--){
 		if(LSM->buf.disk[i]==NULL)
 			break;
-		if(LSM->buf.disk[i]->size>=LSM->buf.disk[i]->m_size){
+		if(LSM->buf.disk[i]->n_num>=LSM->buf.disk[i]->m_num){
 			return i+2;
 		}
 	}
 	if(is_flush_needed(LSM)){
+		if(level_check_overlap(LSM->buf.disk[0],LSM->memtree->start,LSM->memtree->end)){
+			return 1;
+		}
+		else
+			return 0;
+		/*
 		Entry **iter=level_range_find(LSM->buf.disk[0],LSM->memtree->start,LSM->memtree->end);
 		if(iter!=NULL && iter[0]!=NULL){
 			free(iter);
@@ -327,7 +333,7 @@ int8_t lr_is_gc_needed(){
 		}
 		if(iter!=NULL)
 			free(iter);
-		return 0;
+		return 0;*/
 	}
 	return -1;
 }

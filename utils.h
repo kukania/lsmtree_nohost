@@ -10,9 +10,9 @@
 #define MUL 24
 #define LEVELN 5
 #define INPUTSIZE (1024*128*8)
-#define BLOOM
-#define MONKEY_BLOOM
-#define Tiering
+//#define BLOOM
+//#define MONKEY_BLOOM
+#define ISTIERING 0
 #define BUSYPOINT 0.7
 #define THREADQN 1024
 #define THREADNUM 1

@@ -156,7 +156,7 @@ void* thread_gc_main(void *input){
 				if(LSM->buf.disk[i]->size==0)
 					continue;
 				if(i!=0){
-					if(LSM->buf.disk[i]->size + LSM->buf.disk[i-1]->m_size >= LSM->buf.disk[i]->m_size){
+					if(LSM->buf.disk[i]->n_num + LSM->buf.disk[i-1]->m_num >= LSM->buf.disk[i]->m_num){
 						if(i==LEVELN-1){
 						
 						}
@@ -171,7 +171,7 @@ void* thread_gc_main(void *input){
 					}
 				}
 				
-				if(LSM->buf.disk[i]->size >= LSM->buf.disk[i]->m_size){
+				if(LSM->buf.disk[i]->n_num >= LSM->buf.disk[i]->m_num){
 					if(i==LEVELN-1){
 					}
 					else{
@@ -192,7 +192,7 @@ void* thread_gc_main(void *input){
 			lsm_req->now_number=0;
 			lsm_req->target_number=0;
 			lsm_req->flag=1-1;//lsm_req->flag for oob
-			result_entry=make_entry(data->start,data->end,0);
+			result_entry=level_make_entry(data->start,data->end,0);
 //			result_entry->bitset=data->bitset;
 //			skiplist_meta_free(data);
 			lsm_req->data=(char*)data;

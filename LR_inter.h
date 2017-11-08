@@ -5,7 +5,6 @@
 #include<pthread.h>
 #include"skiplist.h"
 #include"utils.h"
-#include"bptree.h"
 //#include"lockfreeq.h"
 #ifndef LIBLSM
 //#include"request.h"
@@ -31,6 +30,7 @@
 typedef struct sktable sktable;
 typedef struct skiplist skiplist;
 typedef struct keyset keyset;
+typedef struct Entry Entry;
 #ifdef LIBLSM
 typedef struct req_t{
 	int dmaTag;

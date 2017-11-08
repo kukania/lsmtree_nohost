@@ -375,16 +375,6 @@ lsmtree* lsm_reset(lsmtree* input){
 	input->memtree=skiplist_init(input->memtree);
 	return input;
 }
-#ifdef Tiering
-bool compaction(lsmtree *LSM,level *src, level *des, Entry *ent, lsmtree_gc_req_t *req){
-	if(src==NULL){//just input to des 
-	
-	}
-	else{
-	
-	}
-}
-#else
 bool compaction(lsmtree *LSM,level *src, level *des,Entry *ent,lsmtree_gc_req_t * req){
 	static int wn=0;
 	KEYT s_start,s_end;

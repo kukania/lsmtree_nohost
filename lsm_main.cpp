@@ -24,11 +24,7 @@ extern MeasureTime *wt;
 extern MeasureTime *at;
 extern MeasureTime gt;
 extern MeasureTime rt;
-extern MeasureTime mem;
 extern MeasureTime last;
-extern MeasureTime buf;
-extern MeasureTime bp;
-extern MeasureTime find;
 
 
 extern pthread_mutex_t endR;
@@ -37,7 +33,6 @@ extern timeval max_time;
 extern int big_time_check;
 extern timeval max_time1,adding;
 extern int big_time_check1;
-extern int meta_read_data;
 
 extern int pros_hit;
 extern int pros_hit2;
@@ -146,13 +141,8 @@ int main(){
 	threadset_read_wait(&processor);
 	measure_end(&mt,"read_end");
 	utils_flag=false;
-	printf("meta_read_data:%d\n",meta_read_data);
 	//measure_end(&mt,"read_end");
-	printf("mem:%.6f\n",(float)mem.adding.tv_usec/1000000);
 //	printf("last:%.6f\n",(float)last.adding.tv_usec/1000000);
-	printf("buf:%.6f\n",(float)buf.adding.tv_usec/1000000);
-	printf("bp:%.6f\n",(float)bp.adding.tv_usec/1000000);
-	printf("find:%.6f\n",(float)find.adding.tv_usec/1000000);
 	threadset_debug_print(&processor);
 	//printf("assign write:%.6f\n",(float)mas2.adding.tv_usec/1000000);
 //	printf("assign read:%.6f\n",(float)mas.adding.tv_usec/1000000);

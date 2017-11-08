@@ -1,6 +1,5 @@
 #include<string.h>
 #include"delete_set.h"
-#include"bptree.h"
 #include"lsmtree.h"
 #include"LR_inter.h"
 #include"ppa.h"
@@ -132,19 +131,17 @@ int delete_trim_process_header(delete_set *set){
 				}
 				KEYT key=KEYGET(temp_oob);
 				Entry *header=NULL;
+				Entry **headers;
 				for(int i=0; i<LEVELN; i++){
-					header=level_find(LSM->buf.disk[i],key);
-					if(header!=NULL && header->pbn==temp_p_key)
-						break;
+					headers=level_find(LSM->buf.disk[i],key);
+					for(int j=0; headers[j]!=NULL; j++){
+						if(headers[j]!=NULL && headers[j]->pbn==temp_p_key){
+							header=headers[j];
+							break;
+						}
+					}
 				}
-				if(header==NULL){
-					printf("??\n");
-				}
-				for(int i=0; i<LEVELN; i++){
-					header=level_find(LSM->buf.disk[i],key);
-					if(header!=NULL && header->pbn==temp_p_key)
-						break;
-				}
+				free(headers);
 				uint64_t new_oob=0;
 
 				req=delete_make_req(1);
@@ -238,9 +235,17 @@ int delete_trim_process_data(delete_set *set){
 				}
 				KEYT key=KEYGET(temp_oob);
 				Entry *header;
+				Entry **headers;
 				KEYT new_ppa=getRPPA(set,NULL);
 				for(int k=0; k<LEVELN; k++){ //header find
-					header=level_find(LSM->buf.disk[k],key);
+					headers=level_find(LSM->buf.disk[i],key);
+					for(int j=0; headers[j]!=NULL; j++){
+						if(headers[j]!=NULL && headers[j]->pbn==temp_p_key){
+							header=headers[j];
+							break;
+						}
+					}
+					free(headers);
 					if(header==NULL)
 						continue;
 					else{

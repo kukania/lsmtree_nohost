@@ -1,6 +1,7 @@
 #ifndef __LSM_HEADER__
 #define __LSM_HEADER__
-#include"bptree.h"
+//#include"bptree.h"
+#include"run_array.h"
 #include"skiplist.h"
 #include"threading.h"
 #include"utils.h"
@@ -22,7 +23,6 @@ typedef struct lsmtree{
 	int dfd;
 }lsmtree;
 lsmtree* init_lsm(lsmtree *);
-bool merge(lsmtree *,KEYT target, skiplist *);
 bool put(lsmtree *,KEYT key, char* value,lsmtree_req_t *);
 bool is_gc_needed(lsmtree *);
 bool compaction(lsmtree *,level *, level *,Entry *,lsmtree_gc_req_t *);
