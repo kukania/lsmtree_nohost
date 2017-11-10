@@ -2,6 +2,8 @@
 #include"lsmtree.h"
 #include"threading.h"
 #include"utils.h"
+#include"delete_set.h"
+#include"ppa.h"
 #include<pthread.h>
 #include<stdlib.h>
 #include<string.h>
@@ -17,6 +19,7 @@ MeasureTime mas2;
 pthread_mutex_t print_lock;
 extern pthread_mutex_t sst_lock;
 extern pthread_mutex_t mem_lock;
+extern pthread_mutex_t write_check_lock;
 pthread_mutex_t pl;
 pthread_mutex_t endR;
 
@@ -25,11 +28,15 @@ extern MeasureTime buf;
 
 extern int gc_end_check;
 extern int read_end_check;
-extern int write_end_check;
-
+extern int write_make_check;
+int write_wait_check;
 pthread_mutex_t gc_cnt_lock;
+int wait_make_cnt;
+char result_value[PAGESIZE];
+KEYT *keys;
 int8_t lr_inter_init(){
 	LSM=(lsmtree*)malloc(sizeof(lsmtree));
+	delete_init();
 	threadset_init(&processor);
 	threadset_start(&processor);
 	pthread_mutex_init(&pl,NULL);
@@ -38,6 +45,15 @@ int8_t lr_inter_init(){
 	measure_init(&mt);
 	measure_init(&mas);
 	measure_init(&mas2);
+	keys=(KEYT*)malloc(sizeof(KEYT)*INPUTSIZE);
+	for(int i=0; i<INPUTSIZE; i++){
+		if(SEQUENCE){
+			keys[i]=i+1;
+		}
+		else{
+			keys[i]=rand()%(INPUTSIZE)+1;
+		}	
+	}
 	if(init_lsm(LSM)!=NULL)
 		return 0;
 	return -1;
@@ -65,20 +81,26 @@ int8_t lr_gc_make_req(int8_t t_num){
 	
 	gc_req=(lsmtree_gc_req_t*)malloc(sizeof(lsmtree_gc_req_t));
 	gc_req->type=LR_FLUSH_T;
+
 	pthread_mutex_lock(&gc_cnt_lock);
 	gc_end_check++;
 	pthread_mutex_unlock(&gc_cnt_lock);
+
+	gc_req->flag=0;
 	gc_req->params[1]=NULL;
 	gc_req->params[2]=(void*)LSM->sstable;
 	gc_req->params[3]=(void*)LSM;
 	gc_req->end_req=lr_gc_end_req;
 	gc_req->isgc=true;
 	threadset_gc_assign(&processor,gc_req);
+	pthread_mutex_unlock(&processor.gc_lock);
 	return 0;
 }
 int make_cnt=1;
+int key_cnt__=0;
 int8_t lr_make_req(req_t *r){
 	int test_num;
+	static bool isread=false;
 	lsmtree_req_t *th_req=(lsmtree_req_t*)malloc(sizeof(lsmtree_req_t));
 #ifdef LIBLSM
 	switch(r->type){
@@ -86,12 +108,23 @@ int8_t lr_make_req(req_t *r){
 		switch(r->type_info->type){
 #endif
 			case 3:
+				th_req->type=LR_DELETE_T;
+				pthread_mutex_lock(&write_check_lock);
+				write_make_check++;
+				pthread_mutex_unlock(&write_check_lock);
+				break;
 			case 1://set
-				write_end_check++;
+				pthread_mutex_lock(&write_check_lock);
+				write_make_check++;
+				pthread_mutex_unlock(&write_check_lock);
 				th_req->type=LR_WRITE_T;
 				break;
 			case 2://get
 				th_req->type=LR_READ_T;
+				if(isread==false){
+					key_cnt__=0;
+					isread=true;
+				}
 				break;
 			default:
 				return -1;
@@ -99,25 +132,29 @@ int8_t lr_make_req(req_t *r){
 		}
 		th_req->req=r;
 		th_req->end_req=lr_end_req;
-
 #ifdef LIBLSM
+	//	r->key=keys[key_cnt__++];
 		th_req->params[1]=(void*)&r->key;
 		th_req->params[2]=(void*)r->value;
 		th_req->params[3]=(void*)LSM;
 #else
+		r->key_info->key=keys[key_cnt__++];
 		th_req->params[1]=(void*)&r->key_info->key;
 		th_req->params[2]=(void*)r->value_info->value;
 		th_req->params[3]=(void*)LSM;
 #endif
 		th_req->isgc=false;
+		th_req->seq_number=0;
 		if(th_req->type==LR_READ_T)
 			th_req->now_number=make_cnt++;
 		/*
 		if(th_req->type==LR_WRITE_T)
 			MS(&mas2);*/
-/*		if(th_req->type==LR_READ_T)
-			MS(&mas);*/
-		threadset_assign(&processor,th_req);		
+		if(th_req->type==LR_READ_T){
+			measure_init(&th_req->mt);
+		}
+		threadset_assign(&processor,th_req);
+		wait_make_cnt++;
 		/*if(th_req->type==LR_READ_T)
 			MA(&mas);*//*
 		if(th_req->type==LR_WRITE_T)
@@ -127,6 +164,7 @@ int8_t lr_make_req(req_t *r){
 struct timeval max_time;
 int big_time_check;
 int endcheck;
+char temp_paage_value[PAGESIZE];
 int8_t lr_end_req(lsmtree_req_t *r){
 	static int readfree=0;
 	lsmtree_req_t *parent;
@@ -136,16 +174,46 @@ int8_t lr_end_req(lsmtree_req_t *r){
 	char *value;
 	void *data=NULL;
 	switch(r->type){
+		case LR_DELETE_PR:
+			printf("%d\n",r->type);
+			value=(char*)r->params[2];
+			memcpy(value,r->data,PAGESIZE);
+			pthread_mutex_unlock(&r->meta_lock);
+			break;
+		case LR_DELETE_R:
+			memcpy(r->res,r->data,PAGESIZE);
+#ifdef ENABLE_LIBFTL
+			memio_free_dma(2,r->dmatag);
+#else
+			free(r->data);
+#endif
+			pthread_mutex_unlock(&r->meta_lock);
+			break;
+		case LR_DELETE_PW:
+#ifdef ENABLE_LIBFTL
+			memio_free_dma(1,r->dmatag);
+#else
+			free(r->data);
+#endif
+		case LR_DELETE_W:
+			break;
 		case LR_DR_T:
 			parent=r->parent;
 			parent->keys=r->keys;
 			parent->dmatag=r->dmatag;
 			//cache_input(&processor.mycache,parent->flag,(sktable*)r->keys,r->dmatag);
+		//	printf("?");
+			//parent->lock_test=0;
 			pthread_mutex_unlock(&parent->meta_lock);
+			//printf("a:%llu\n",s.tv_sec * 1000000 + s.tv_usec);
 			threadset_read_assign(&processor,parent);
 		//	while(!parent->meta->enqueue(data)){}
 			//memcpy(parent->res,r->keys,PAGESIZE);
-
+#ifdef ENABLE_LIBFTL
+		//	memio_free_dma(2,r->dmatag);
+#else
+		//	free(r->keys);
+#endif
 	//		MS(&bp);
 	//		MA(&bp);
 			break;
@@ -155,19 +223,26 @@ int8_t lr_end_req(lsmtree_req_t *r){
 			r->req=NULL;
 			break;
 		case LR_DDW_T:
-#ifdef ENABLE_LIBFTL
+#if defined(ENABLE_LIBFTL) && defined(LIBLSM)
 			memio_free_dma(1,r->req->dmaTag);
+#elif SERVER
 #else
 			free(r->req->value);
 #endif
+			write_wait_check++;
 			break;
 		case DISK_READ_T:
 		case LR_READ_T:
+#ifdef M_CPY
+			//memcpy(result_value,r->value,PAGESIZE);
+#endif
 			read_end_check++;
 //			delete r->meta;
-//			pthread_mutex_destroy(&r->meta_lock);
-#ifdef ENABLE_LIBFTL
+			pthread_mutex_destroy(&r->meta_lock);
+#if defined(ENABLE_LIBFTL) && defined(LIBLSM)
 			memio_free_dma(2,r->req->dmaTag);
+#elif SERVER
+
 #else
 			free(r->req->value);
 #endif
@@ -190,13 +265,35 @@ int8_t lr_end_req(lsmtree_req_t *r){
 int8_t lr_gc_end_req(lsmtree_gc_req_t *r){
 	lsmtree_gc_req_t *parent;
 	int setnumber,offset;
+	char *target;
 	switch(r->type){
 		case LR_DW_T:
 #ifdef ENABLE_LIBFTL
 			memio_free_dma(1,r->dmatag);
 #else
 			free(r->keys);
+#endif	
+			write_wait_check++;
+			break;
+		case LR_DDW_T:
+#ifdef ENABLE_LIBFTL
+			memio_free_dma(1,r->dmatag);
+#else
+			free(r->data);
 #endif
+			break;
+		case LR_DDR_T:
+			parent=r->parent;
+			target=(char*)r->params[2];
+			memcpy(target,r->data,PAGESIZE);
+#ifdef ENABLE_LIBFTL
+			memio_free_dma(2,r->dmatag);
+#else
+			free(r->data);
+#endif
+			pthread_mutex_lock(&parent->meta_lock);
+			parent->now_number++;
+			pthread_mutex_unlock(&parent->meta_lock);
 			break;
 		case LR_DR_T:
 			parent=r->parent;
@@ -211,13 +308,12 @@ int8_t lr_gc_end_req(lsmtree_gc_req_t *r){
 			free(r->keys);
 #endif
 			break;
+		case LR_GC_T:
 		case LR_FLUSH_T:
 			pthread_mutex_lock(&gc_cnt_lock);
 			gc_end_check--;
 			pthread_mutex_unlock(&gc_cnt_lock);
 			pthread_mutex_destroy(&r->meta_lock);
-			if(r->compt_headers!=NULL)
-				free(r->compt_headers);
 			break;
 	}
 	free(r);
@@ -233,6 +329,8 @@ int8_t lr_gc_req_wait(lsmtree_gc_req_t *input){
 		pthread_mutex_unlock(&input->meta_lock);
 	}
 	return 0;
+}
+int8_t lr_wait(){
 }
 int8_t lr_req_wait(lsmtree_req_t *input){
 	while(1){

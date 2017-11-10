@@ -1,12 +1,8 @@
-#include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
 #include"utils.h"
-#include "lsm_cache.h"
-
-#ifdef ENABLE_LIBFTL
 #include"libmemio.h"
-#endif
+#include "lsm_cache.h"
 
 void cache_init(lsm_cache *input){
 	for(int i=0; i<LEVELN; i++){
@@ -40,11 +36,7 @@ void cache_input(lsm_cache* input,int l,sktable* sk,int tag){
 			value=i;
 		}
 	}
-
-	if(victim->cpyflag){
-		free(victim->content);
-	}
-	else{
+	if(victim->content!=NULL){
 #ifdef ENABLE_LIBFTL
 		memio_free_dma(2,victim->dmatag);
 #else
@@ -64,20 +56,13 @@ keyset* cache_level_find(lsm_cache* input,int l,KEYT k){
 	for(int j=0;j<CACHENUM; j++){
 		if(input->caches[l][j].content==NULL)
 			continue;
+		if(input->caches[l][j].content->meta[0].key > k || input->caches[l][j].content->meta[KEYN-1].key < k)
+			continue;
 		res=skiplist_keyset_find(input->caches[l][j].content,k);
+
 		if(res!=NULL) {
 			input->caches[l][j].check_bit=input->time_bit++;
 			input->caches[l][j].hit++;
-#ifdef ENABLE_LIBFTL
-			if(!input->caches[l][j].cpyflag &&input->caches[l][j].hit>=CACHETH){
-				input->caches[l][j].cpyflag=true;
-				sktable *temp_sk=input->caches[l][j].content;
-				input->caches[l][j].content=(sktable*)malloc(PAGESIZE);
-				memcpy(input->caches[l][j].content,temp_sk,PAGESIZE);
-				printf("copy!\n");
-				memio_free_dma(2,input->caches[l][j].dmatag);
-			}
-#endif
 			return res;
 		}
 	}

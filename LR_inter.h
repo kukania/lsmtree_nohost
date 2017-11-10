@@ -5,9 +5,10 @@
 #include<pthread.h>
 #include"skiplist.h"
 #include"utils.h"
+#include"bptree.h"
 //#include"lockfreeq.h"
-#ifndef LIBLSM
-//#include"request.h"
+#ifdef SERVER
+#include"request.h"
 #endif
 /**request type***/
 #define LR_READ_T 	32
@@ -16,10 +17,16 @@
 #define LR_WRITE_T 	8
 #define LR_COMP_T	4
 #define LR_FLUSH_T	16
+#define LR_GC_T		17
 #define LR_DW_T		1
 #define LR_DR_T		3
 #define LR_DDR_T	0
 #define LR_DDW_T    2
+#define LR_DELETE_T 64
+#define LR_DELETE_PR 65
+#define LR_DELETE_PW 66
+#define LR_DELETE_R 67
+#define LR_DELETE_W 68
 /***/
 typedef struct sktable sktable;
 typedef struct skiplist skiplist;
@@ -41,7 +48,7 @@ typedef struct lsmtree_gc_req_t{
 	uint8_t type;
 	uint8_t flag;
 	void *params[4];
-	int8_t (*end_req)(struct lsmtree_gc_req_t *);
+	int8_t (*end_req)(lsmtree_gc_req_t *);
 	pthread_mutex_t meta_lock;
 	uint64_t now_number;
 	uint64_t target_number;
@@ -52,6 +59,8 @@ typedef struct lsmtree_gc_req_t{
 	int dmatag;
 	sktable *compt_headers;
 	skiplist * skip_data;
+	char *data;
+	bool lock_test;
 
 	MeasureTime mt;
 }lsmtree_gc_req_t;
@@ -62,7 +71,7 @@ typedef struct lsmtree_req_t{
 	uint8_t type;
 	uint8_t flag;
 	void *params[4];
-	int8_t (*end_req)(struct lsmtree_req_t *);
+	int8_t (*end_req)(lsmtree_req_t *);
 	pthread_mutex_t meta_lock;
 	uint64_t now_number;
 	uint64_t target_number;
@@ -72,7 +81,9 @@ typedef struct lsmtree_req_t{
 	struct lsmtree_req_t *parent;
 	int dmatag;
 	struct lsmtree_gc_req_t *gc_parent;
-	char *dummy;
+	Entry *dummy;
+	char *data;
+	bool lock_test;
 
 	MeasureTime mt;
 }lsmtree_req_t;
@@ -86,4 +97,5 @@ int8_t lr_gc_req_wait(lsmtree_gc_req_t *);
 int8_t lr_inter_init();
 int8_t lr_inter_free();
 int8_t lr_is_gc_needed();
+int8_t lr_wait();
 #endif

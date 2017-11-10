@@ -19,11 +19,11 @@ void measure_pop(MeasureTime *);
 void measure_stamp(MeasureTime *);
 void measure_adding(MeasureTime *);
 struct timeval measure_res(MeasureTime *);
-#ifdef DCPP
+#ifdef NOHOST
 #include<string>
 void measure_end(MeasureTime *,std::string);
 #else
-void measure_end(MeasureTime *,const char *);
+void measure_end(MeasureTime *,char *);
 #endif
 void measure_calc(MeasureTime *);
 void donothing(MeasureTime *t);

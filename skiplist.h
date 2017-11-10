@@ -4,6 +4,7 @@
 #include"utils.h"
 #include"stdint.h"
 #include"LR_inter.h"
+#include"bloomfilter.h"
 typedef struct lsmtree_req_t lsmtree_req_t;
 typedef struct lsmtree_gc_req_t lsmtree_gc_req_t;
 typedef struct snode{
@@ -11,6 +12,7 @@ typedef struct snode{
 	KEYT ppa;
 	int level;
 	char *value;
+	bool vflag;
 	struct lsmtree_req_t *req;
 	struct snode **list;
 }snode;
@@ -20,6 +22,10 @@ typedef struct skiplist{
 	KEYT start,end;
 	uint64_t size;
 	snode *header;
+	uint8_t *bitset;
+#ifdef BLOOM
+	BF *filter;
+#endif
 }skiplist;
 
 typedef struct skIterator{
@@ -48,16 +54,25 @@ sktable *skiplist_meta_read_c(KEYT, int fd,int ,struct lsmtree_gc_req_t *);
 sktable *skiplist_data_read(sktable*,KEYT pbn, int fd);
 keyset* skiplist_keyset_find(sktable *,KEYT key);
 bool skiplist_keyset_read(keyset* ,char *,int fd,lsmtree_req_t *);
+bool skiplist_keyset_read_c(keyset* ,char *,int fd,lsmtree_gc_req_t *);
 void skiplist_sktable_free(sktable *);
 
 snode *skiplist_pop(skiplist *);
-KEYT skiplist_write(skiplist*,lsmtree_gc_req_t *,int hfd, int dfd);
-KEYT skiplist_meta_write(skiplist *, int fd,struct lsmtree_gc_req_t*);
+KEYT skiplist_write(skiplist*,lsmtree_gc_req_t *,int hfd, int dfd,double fpr);
+KEYT skiplist_meta_write(skiplist *, int fd,struct lsmtree_gc_req_t*,double fpr);
 KEYT skiplist_data_write(skiplist *, int fd,struct lsmtree_gc_req_t*);
+void skiplist_sk_data_write(sktable *,int fd,struct lsmtree_gc_req_t*);
 skiplist* skiplist_cut(skiplist *,KEYT num);
 void skiplist_ex_value_free(skiplist *list);
 void skiplist_meta_free(skiplist *list);
 void skiplist_free(skiplist *list);
+KEYT sktable_meta_write(sktable* input,lsmtree_gc_req_t *,int dfd,void **filter,float fpr);
 skIterator* skiplist_getIterator(skiplist *list);
 void skiplist_traversal(skiplist *data);
+void sktable_print(sktable *);
+bool sktable_check(sktable*);
+
+void skiplist_save(skiplist *,int fd);
+void skiplist_load(skiplist*, int fd);
+void skiplist_relocate_data(skiplist *);
 #endif

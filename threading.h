@@ -9,6 +9,10 @@
 #include"lsm_cache.h"
 #include<pthread.h>
 #include<semaphore.h>
+#ifdef M_QUEUE
+#include<queue>
+using namespace std;
+#endif
 typedef struct threadset threadset;
 typedef struct{
 	int start;
@@ -25,9 +29,11 @@ typedef struct threading{
 
 	int cache_hit;
 	int header_read;
+	int notfound;
 	MeasureTime waiting;
 	threadset *master;
-
+	
+	int flag;
 	lsmtree_req_t *pre_req[WAITREQN];
 	Entry *entry[WAITREQN];
 }threading;
@@ -36,6 +42,7 @@ typedef struct threadset{
 	pthread_mutex_t th_cnt_lock;
 	pthread_mutex_t req_lock;
 	pthread_mutex_t gc_lock;
+	pthread_mutex_t read_lock;
 	pthread_cond_t gc_cond;
 	pthread_cond_t gc_full_cond;
 	bool write_flag;
@@ -46,9 +53,21 @@ typedef struct threadset{
 #endif
 	threading threads[THREADNUM];
 	threading gc_thread;
-	spsc_bounded_queue_t<void *>* req_q;
-	spsc_bounded_queue_t<void *> *read_q;
-	spsc_bounded_queue_t<void *>* gc_q;
+#ifdef MULTIQ
+	mpmc_bounded_queue_t<void *>* req_q;
+	mpmc_bounded_queue_t<void *> *read_q;
+	mpmc_bounded_queue_t<void *>* gc_q;
+#else
+	#ifdef M_QUEUE
+		queue<void *> *req_q;
+		queue<void *> *read_q;
+		queue<void *> *gc_q;
+	#else
+		spsc_bounded_queue_t<void *>* req_q;
+		spsc_bounded_queue_t<void *> *read_q;
+		spsc_bounded_queue_t<void *>* gc_q;
+	#endif
+#endif
 	//queue *gc_q;
 	int activatednum;
 	int max_act;

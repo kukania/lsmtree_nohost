@@ -1,6 +1,7 @@
 #ifndef __BP__HEADER__
 #define __BP__HEADER__
 #include"utils.h"
+#include"bloomfilter.h"
 struct Entry; struct Node;
 typedef union Child{
 	struct Entry *entry;
@@ -12,6 +13,11 @@ typedef struct Entry{
 	KEYT version;
 	KEYT end;
 	KEYT pbn;
+	bool iscompactioning;
+	uint8_t *bitset;
+#ifdef BLOOM
+	BF *filter;
+#endif
 	struct Node *parent;
 }Entry;
 
@@ -29,8 +35,15 @@ typedef struct level{
 	int size;
 	int m_size;
 	int depth;
+	double fpr;
+	KEYT start;
+	KEYT end;
 	KEYT version;
 }level;
+typedef struct iterator{
+	Node *now;
+	int idx;
+}Iter;
 
 Node *level_find_leafnode(level *lev, KEYT key);
 Entry *make_entry(KEYT start, KEYT end,KEYT pbn);
@@ -42,6 +55,10 @@ Entry **level_range_find(level *,KEYT start,KEYT end);
 Node *level_insert(level*,Entry *);
 Node *level_delete(level*,KEYT);
 Entry *level_getFirst(level *);
+Entry *level_get_next(Iter *);
+Iter* level_get_Iter(level *);
+void level_save(level *,int fd);
+void level_load(level *,int fd);
 void level_print(level *);
 void free_entry(Entry *);
 void level_free(level*);

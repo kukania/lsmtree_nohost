@@ -1,47 +1,100 @@
-CC=g++
+CC=${HOST}-g++ -D_FILE_OFFSET_BITS=64
 
-CFLAGS	+=\
-			-g\
-			-DLIBLSM\
-			-std=c++11\
-			-DCPP\
-			-Wwrite-strings\
-
-INCLUDS :=	-I$(PWD) \
-
-LIBS 	:=\
-			-lpthread\
-
-SRCS	:=\
-			$(PWD)/bptree.c\
-			$(PWD)/skiplist.c\
-			$(PWD)/LR_inter.cpp\
-			$(PWD)/lsmtree.cpp\
-			$(PWD)/lsm_cache.c\
-			$(PWD)/threading.cpp\
-			$(PWD)/measure.c\
-
-OBJS	:=\
-			$(SRCS:.c=.o) $(SRCS:.cpp=.o)
-
-all		: 	LIBLSM
-			
-LIBLSM	:	liblsm.a lsm_main.c
-			$(CC) $(INCLUDES) $(CFLAGS) -o $@ lsm_main.c liblsm.a $(LIBS)
-			@$(RM) *.o
+BDBM = ../bdbm_drv
+REDIS=../redis_nohost_final
+ROCKSDB=../rocksdb-server/src
+CFLAGS  +=\
+		  -g\
+		  -std=c++11\
+		  -DCPP\
+		  -Wwrite-strings\
+		  -DNOHOST\
+		  -DUSER_MODE\
+		  -DHASH_BLOOM=20 \
+		  -DCONFIG_ENABLE_MSG \
+		  -DCONFIG_ENABLE_DEBUG \
+		  -DUSE_PMU \
+		  -DUSE_NEW_RMW \
+		  -DENABLE_LIBFTL\
+		  -DLIBLSM\
+	#	  -DSERVER\
+	#	  -DM_CPY\
+	#	  -DM_QUEUE\
+	#	  -DM_COMPT\
+	#	  -DNOGC_TEST\
 
 
-liblsm.a:	$(OBJS)
-			$(AR) r $(@) $(OBJS)
+INCLUDES :=     -I$(PWD) \
+	-I$(BDBM)/frontend/libmemio \
+	-I$(BDBM)/frontend/nvme \
+	-I$(BDBM)/ftl \
+	-I$(BDBM)/include \
+	-I$(BDBM)/common/utils \
+	-I$(BDBM)/common/3rd \
+	-I$(BDBM)/devices/common \
+	-I$(REDIS)\
+	-I$(REDIS)/include\
+#	-I$(ROCKSDB)\
+#	-I$(ROCKSDB)/libuv-1.10.1/build/include\
+#	-I$(ROCKSDB)/rocksdb-4.13/include\
 
-.c.o	:
-			$(CC) $(INCLUDES) $(CFLAGS) -c $< -o $@
+LIBS    :=\
+	-lpthread\
 
-.cpp.o	:
-			$(CC) $(INCLUDES) $(CFLAGS) -c $< -o $@
+SRCS    :=\
+	bptree.cpp\
+	skiplist.cpp\
+	LR_inter.cpp\
+	lsmtree.cpp\
+	lsm_cache.c\
+	threading.cpp\
+	normal_queue.c\
+	measure.c\
+	ppa.cpp\
+	delete_set.cpp\
+	bloomfilter.cpp\
 
+
+OBJS    :=\
+	$(patsubst %.c,%.o,$(SRCS))\
+
+OBJS :=\
+	$(patsubst %.cpp,%.o,$(OBJS))\
+	
+TARGETOBJ :=\
+	$(addprefix object/,$(OBJS))\
+
+all : LIBLSM TESTLSM
+
+bloomfilter: bloomfilter.cpp bloomfilter.h
+	g++ -DCPP -g -o bf_test bloomfilter.c
+
+test: liblsm.a test.c
+	$(CC) $(INCLUDES) $(CFLAGS) -o $@ test.c liblsm.a $(LIBS)
+
+LIBLSM : liblsm.a lsm_main.cpp libmemio.a
+	$(CC) $(INCLUDES) $(CFLAGS) -o $@ lsm_main.cpp liblsm.a libmemio.a $(LIBS)
+
+TESTLSM : liblsm.a lsm_read.cpp libmemio.a
+	$(CC) $(INCLUDES) $(CFLAGS) -o $@ lsm_read.cpp liblsm.a libmemio.a $(LIBS)
+
+liblsm.a: $(TARGETOBJ)
+	$(AR) r $(@) $(TARGETOBJ)
+
+.c.o    : 
+	$(CC) $(INCLUDES) $(CFLAGS) -c $< -o $@
+
+.cpp.o  :
+	$(CC) $(INCLUDES) $(CFLAGS) -c $< -o $@
+
+object/%.o: %.c utils.h
+	$(CC) $(INCLUDES) $(CFLAGS) -c $< -o $@
+
+object/%.o: %.cpp utils.h
+	$(CC) $(INCLUDES) $(CFLAGS) -c $< -o $@
 
 clean	:
-			@$(RM) *.o
-			@$(RM) liblsm.a LIBLSM
-			
+	@$(RM) object/*.o
+	@$(RM) liblsm.a
+	@$(RM) LIBLSM
+	@$(RM) *.o
