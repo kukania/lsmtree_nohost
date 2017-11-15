@@ -46,13 +46,13 @@ SRCS    :=\
 	skiplist.cpp\
 	LR_inter.cpp\
 	lsmtree.cpp\
-	lsm_cache.c\
 	threading.cpp\
 	normal_queue.c\
 	measure.c\
 	ppa.cpp\
 	delete_set.cpp\
 	bloomfilter.cpp\
+	cache.c\
 
 
 OBJS    :=\
@@ -97,4 +97,5 @@ clean	:
 	@$(RM) object/*.o
 	@$(RM) liblsm.a
 	@$(RM) LIBLSM
+	@$(RM) TESTLSM
 	@$(RM) *.o

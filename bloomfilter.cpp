@@ -128,9 +128,9 @@ uint64_t bf_bits(int entry, double fpr){
 }
 void bf_set(BF *input, KEYT key){
 	KEYT h;
-	for(int i=0; i<input->k; i++){
+	for(int i=1; i<=input->k; i++){
 		//MurmurHash3_x86_32(&key,sizeof(key),i,&h);
-		h=hashfunction(key+i);
+		h=hashfunction((key+(i*i))*i);
 		h%=input->m;
 		int block=h/8;
 		int offset=h%8;
@@ -140,9 +140,9 @@ void bf_set(BF *input, KEYT key){
 
 bool bf_check(BF* input, KEYT key){
 	KEYT h;
-	for(int i=0; i<input->k; i++){
+	for(int i=1; i<=input->k; i++){
 		//MurmurHash3_x86_32(&key,sizeof(key),i,&h);
-		h=hashfunction(key+i);
+		h=hashfunction((key+(i*i))*i);
 		h%=input->m;
 		int block=h/8;
 		int offset=h%8;

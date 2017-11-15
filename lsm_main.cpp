@@ -1,6 +1,5 @@
 #include"LR_inter.h"
 #include"measure.h"
-#include"lsm_cache.h"
 #include"utils.h"
 #include"threading.h"
 #include"delete_set.h"
@@ -51,6 +50,10 @@ int cnnt=0;
 bool utils_flag;
 #define FLAGS 11
 
+#ifdef CACHE
+#include"cache.h"
+extern cache *CH;
+#endif
 void *util_check(void *){
 	while(utils_flag){
 	}
@@ -119,8 +122,8 @@ int main(){
 	}*/
 	//sleep(10);
 	
-	
-	int tfd=open("data/meta.data",O_RDWR|O_CREAT|O_TRUNC,0666);
+/*
+	int tfd=open("/home/koo/workspace/lsmtree_final/data/meta.data",O_RDWR|O_CREAT|O_TRUNC,0666);
 	int level_cnt=0;
 	for(int i=0; i<LEVELN; i++){
 		level *lev=LSM->buf.disk[i];
@@ -136,7 +139,8 @@ int main(){
 		}
 	}
 	skiplist_save(LSM->memtree,tfd);
-/*
+*/
+
 	processor.threads[0].flag=0;
 	printf("read!\n");
 	pthread_t thr;
@@ -185,7 +189,7 @@ int main(){
 //	printf("readtime:%.6f\n",(float)rt.adding.tv_usec/1000000);
 //	printf("wt:%.6f\n",(float)wt->adding.tv_usec/1000000);
 //	printf("at:%.6f\n",(float)at->adding.tv_usec/1000000);
-*/
+
 /*
 	printf("1>>max:%ld sec and %.6f\n",max_time1.tv_sec,(float)max_time1.tv_usec/1000000);
 	printf("1>>over time (%d): %d\n",INPUTSIZE,big_time_check1);
@@ -205,5 +209,6 @@ int main(){
 	printf("mem hit :%d\n",mem_hit);
 	printf("cache_hit : %d\n",cache_hit);
 */
+//	lr_inter_free();
 	return 0;
 }

@@ -9,12 +9,16 @@
 #define PAGESIZE (8192)
 #define MUL 24
 #define LEVELN 5
-#define TARGETSIZEVALUE 500
-#define INPUTSIZE (1024*128*80)
+#define TARGETSIZEVALUE 300
+#define GIGASIZE 256
+#define INPUTSIZE (1024*128*(GIGASIZE))
 #define KEYRANGE (1024*128*(TARGETSIZEVALUE))
+#define CACHESIZE (128*(GIGASIZE)) //8kb *CACHESIZE, 128=1MB
+
 
 #define BLOOM
 //#define MONKEY_BLOOM
+#define CACHE
 #define BUSYPOINT 0.7
 #define THREADQN 1024
 #define THREADNUM 1
@@ -31,8 +35,6 @@
 #define READTEST
 #define GETTEST
 
-#define CACHENUM 	2
-#define CACHETH     100
 #define WAITREQN	16
 #define WAITMETAN	128
 
@@ -44,7 +46,7 @@
 
 #define SNODE_SIZE (8192)
 
-#define RAF 1 //for monkey bloomfilter
+#define RAF 1.0 //for monkey bloomfilter
 #define FPR 0.2 //normal bloomfilter
 
 #define NODATA UINT_MAX

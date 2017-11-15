@@ -453,6 +453,7 @@ KEYT skiplist_write(skiplist *data, lsmtree_gc_req_t * req,int hfd,int dfd,doubl
 }
 int seq_number=0;
 KEYT skiplist_meta_write(skiplist *data,int fd, lsmtree_gc_req_t *req,double fpr){
+	//printf("meta write!\n");
 	int now=0;
 	int i=0;
 	snode *temp=data->header->list[1];
@@ -476,9 +477,13 @@ KEYT skiplist_meta_write(skiplist *data,int fd, lsmtree_gc_req_t *req,double fpr
 		data->bitset=(uint8_t*)malloc(sizeof(uint8_t)*(KEYN/8));
 		memset(data->bitset,0,sizeof(uint8_t)*(KEYN/8));
 		//bloofilter init
+/*#ifdef CACHE
+
+#else*/
 #ifdef BLOOM
 		data->filter=bf_init(KEYN, fpr);
 #endif
+//#endif
 		int temp_i=0;
 		for(int i=0; temp!=data->header; i++){
 			int bit_n=i/8;
@@ -494,9 +499,12 @@ KEYT skiplist_meta_write(skiplist *data,int fd, lsmtree_gc_req_t *req,double fpr
 			if(temp->vflag){
 				data->bitset[bit_n] |= (1<<offset);	
 			}
+/*#ifdef CACHE
+#else*/
 #ifdef BLOOM
 		 	bf_set(data->filter,temp_req->keys[i].key);
 #endif
+//#endif
 			temp=temp->list[1];
 			temp_i=i;
 		}
@@ -628,7 +636,7 @@ skiplist *skiplist_cut(skiplist *list,KEYT num){
 	res->size=num;
 	return res;
 }
-KEYT sktable_meta_write(sktable *input,lsmtree_gc_req_t *req,int fd,void **ft,float fpr){
+KEYT sktable_meta_write(sktable *input,lsmtree_gc_req_t *req,int fd,BF **ft,float fpr){
 	KEYT temp_pp=getPPA(header_segment,(void*)req);
 	BF *filter;
 	lsmtree_gc_req_t *temp_req=(lsmtree_gc_req_t*)malloc(sizeof(lsmtree_gc_req_t));
@@ -661,8 +669,8 @@ KEYT sktable_meta_write(sktable *input,lsmtree_gc_req_t *req,int fd,void **ft,fl
 #else	
 	memio_write(mio,temp_pp,(uint64_t)(PAGESIZE),(uint8_t*)temp_req->keys,1,(void*)temp_req,temp_req->dmatag);
 #endif
-	BF **_ft=(BF**)ft;
-	*_ft=filter;
+	
+	(*ft)=filter;
 	return temp_pp;
 }
 void skiplist_relocate_data(skiplist* input){
@@ -729,6 +737,32 @@ void skiplist_load(skiplist* input, int fd){
 		skiplist_insert(input,key,value,NULL,vflag);
 	}
 }
+
+sktable *skiplist_to_sk(skiplist *data,uint8_t **bitset){
+	snode *temp=data->header->list[1];
+	sktable *res=(sktable*)malloc(sizeof(sktable));
+	uint8_t *target_bitset=(uint8_t*)malloc(sizeof(uint8_t)*(KEYN/8));
+	int number=0;
+	for(int i=0;temp!=data->header; i++ ){
+		res->meta[i].key=temp->key;
+		res->meta[i].ppa=temp->ppa;
+		int bit_n=i/8;
+		int offset=i%8;
+		if(temp->vflag){
+			target_bitset[bit_n]|=(1<<offset);
+		}
+		temp=temp->list[1];
+		number++;
+	}
+	(*bitset)=target_bitset;
+
+	for(int i=number; i<KEYN; i++){
+		res->meta[i].key=NODATA;
+		res->meta[i].ppa=NODATA;
+	}
+	return res;
+}
+
 #ifdef DEBUG
 int main(){
 	skiplist * temp;

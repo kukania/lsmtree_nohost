@@ -12,6 +12,9 @@
 #include "libmemio.h"
 #endif
 lsmtree *LSM;
+#ifdef CACHE
+cache *CH;
+#endif
 threadset processor;
 MeasureTime mt;
 MeasureTime mas;
@@ -37,11 +40,16 @@ KEYT *keys;
 int8_t lr_inter_init(){
 	LSM=(lsmtree*)malloc(sizeof(lsmtree));
 	delete_init();
+#ifdef CACHE
+	CH=(cache*)malloc(sizeof(cache));
+	cache_init(CH);
+#endif
 	threadset_init(&processor);
 	threadset_start(&processor);
 	pthread_mutex_init(&pl,NULL);
 	pthread_mutex_init(&endR,NULL);
 	pthread_mutex_init(&gc_cnt_lock,NULL);
+	pthread_mutex_init(&print_lock,NULL);
 	measure_init(&mt);
 	measure_init(&mas);
 	measure_init(&mas2);
@@ -236,9 +244,11 @@ int8_t lr_end_req(lsmtree_req_t *r){
 #ifdef M_CPY
 			//memcpy(result_value,r->value,PAGESIZE);
 #endif
+			pthread_mutex_lock(&print_lock);
 			read_end_check++;
+			pthread_mutex_unlock(&print_lock);
 //			delete r->meta;
-			pthread_mutex_destroy(&r->meta_lock);
+			pthread_mutex_destroy(&print_lock);
 #if defined(ENABLE_LIBFTL) && defined(LIBLSM)
 			memio_free_dma(2,r->req->dmaTag);
 #elif SERVER

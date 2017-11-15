@@ -113,7 +113,6 @@ void threadset_init(threadset* input){
 #endif
 	//	input->req_q=create_queue();
 
-	cache_init(&input->mycache);
 }
 
 void threadset_clear(threadset *input){
@@ -138,7 +137,6 @@ void threadset_clear(threadset *input){
 	delete input->req_q;
 	delete input->gc_q;
 
-	cache_clear(&input->mycache);
 }
 bool read_flag;
 void* thread_gc_main(void *input){
@@ -157,6 +155,8 @@ void* thread_gc_main(void *input){
 #else
 		while(!master->gc_q->dequeue(&req_data)){
 			pthread_mutex_lock(&master->gc_lock);
+			if(myth->terminateflag)
+				break;
 		}
 #endif
 		if(read_flag) break;
@@ -288,6 +288,8 @@ void* thread_main(void *input){
 		}
 #else
 		while(1){
+			if(myth->terminateflag)
+				break;
 			if(!master->read_q->dequeue(&data)){
 				if(!master->req_q->dequeue(&data)){
 					continue;
@@ -445,6 +447,7 @@ void threadset_end(threadset *input){
 	pthread_mutex_lock(&input->gc_thread.terminate);
 	input->gc_thread.terminateflag=true;
 	pthread_mutex_unlock(&input->gc_thread.terminate);
+	pthread_mutex_unlock(&input->gc_lock);
 	pthread_join(input->gc_thread.id,NULL);
 
 	threadset_request_wait(input);
@@ -474,7 +477,7 @@ void threadset_debug_print(threadset *input){
 
 	printf("\n\n======================\n");
 	printf("all summary\n");
-	printf("cache_hit : %d\n",all_cache_hit);
+	printf("cache_hit : %.3f\n",(float)all_cache_hit/(INPUTSIZE-KEYN));
 	printf("NOTFOUND : %.3f\n",(float)input->threads[0].notfound/INPUTSIZE);
 	printf("header_read: %d [%d]\n",all_header_read,INPUTSIZE-KEYN);
 	printf("RAFl: %.3f\n",(float)all_header_read/(INPUTSIZE-KEYN));

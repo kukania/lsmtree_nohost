@@ -2,6 +2,8 @@
 #define __BP__HEADER__
 #include"utils.h"
 #include"bloomfilter.h"
+#include"skiplist.h"
+#include"cache.h"
 struct Entry; struct Node;
 typedef union Child{
 	struct Entry *entry;
@@ -15,10 +17,15 @@ typedef struct Entry{
 	KEYT pbn;
 	bool iscompactioning;
 	uint8_t *bitset;
+	double fpr;
 #ifdef BLOOM
 	BF *filter;
 #endif
 	struct Node *parent;
+#ifdef CACHE
+	struct sktable *data;
+	struct cache_entry *c_entry;
+#endif
 }Entry;
 
 typedef struct Node{

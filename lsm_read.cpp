@@ -1,6 +1,5 @@
 #include"LR_inter.h"
 #include"measure.h"
-#include"lsm_cache.h"
 #include"utils.h"
 #include"threading.h"
 #include"delete_set.h"
@@ -19,6 +18,13 @@ extern memio* mio;
 extern threadset processor;
 extern lsmtree *LSM;
 extern KEYT *keys;
+extern MeasureTime bp;
+extern MeasureTime mem;
+extern MeasureTime last;
+extern MeasureTime buf;
+extern MeasureTime find;
+
+
 int main(){
 	MeasureTime mt2;
 	measure_init(&mt2);
@@ -40,14 +46,13 @@ int main(){
 		if(i%1024==1){
 			printf("%d\n",i);
 		}
-
 		if(SEQUENCE==0){
-			key=keys[i-1];
+			key=keys[i];
 		}
 		else{
 			key=i;
 		}
-		req->key=i;
+		req->key=key;
 #ifdef ENABLE_LIBFTL
 		//printf("main_alloc!\n");
 		req->dmaTag=memio_alloc_dma(req->type,&req->value);
@@ -59,11 +64,14 @@ int main(){
 	threadset_read_wait(&processor);
 	MT(&mt2);
 	threadset_debug_print(&processor);
-
+/*
 	for(int i=0; i<LEVELN; i++){
 		level *lev=LSM->buf.disk[i];
 		if(lev->m_size!=0){
 			level_save(lev,tfd);
 		}
 	}
+*/
+	printf("bp:%.6f\n",(float)bp.adding.tv_usec/1000000);
+	//lr_inter_free();
 }

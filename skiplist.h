@@ -66,11 +66,12 @@ skiplist* skiplist_cut(skiplist *,KEYT num);
 void skiplist_ex_value_free(skiplist *list);
 void skiplist_meta_free(skiplist *list);
 void skiplist_free(skiplist *list);
-KEYT sktable_meta_write(sktable* input,lsmtree_gc_req_t *,int dfd,void **filter,float fpr);
+KEYT sktable_meta_write(sktable* input,lsmtree_gc_req_t *,int dfd,BF **filter,float fpr);
 skIterator* skiplist_getIterator(skiplist *list);
 void skiplist_traversal(skiplist *data);
 void sktable_print(sktable *);
 bool sktable_check(sktable*);
+sktable *skiplist_to_sk(skiplist *,uint8_t **);
 
 void skiplist_save(skiplist *,int fd);
 void skiplist_load(skiplist*, int fd);

@@ -6,7 +6,6 @@
 #include"skiplist.h"
 #include"lockfreeq.h"
 #include"lfmpmc.h"
-#include"lsm_cache.h"
 #include<pthread.h>
 #include<semaphore.h>
 #ifdef M_QUEUE
@@ -74,7 +73,6 @@ typedef struct threadset{
 	int sk_target_number;
 	int sk_now_number;
 
-	lsm_cache mycache;
 }threadset;
 void threading_clear(threading *);
 void threading_init(threading *);

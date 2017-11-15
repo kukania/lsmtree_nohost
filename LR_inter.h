@@ -81,7 +81,7 @@ typedef struct lsmtree_req_t{
 	struct lsmtree_req_t *parent;
 	int dmatag;
 	struct lsmtree_gc_req_t *gc_parent;
-	Entry *dummy;
+	struct Entry *req_entry;
 	char *data;
 	bool lock_test;
 

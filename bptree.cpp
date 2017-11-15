@@ -4,7 +4,9 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<limits.h>
-
+#ifdef CACHE
+extern cache *CH;
+#endif
 Node* binary_search_node(Node *node, KEYT key){
 	int start=0,end=node->count-2;
 	while(1){
@@ -33,6 +35,10 @@ Entry *make_entry(KEYT key,KEYT end,KEYT pbn1){
 	res->end=end;
 	res->pbn=pbn1;
 	res->bitset=NULL;
+#ifdef CACHE
+	res->data=NULL;
+	res->c_entry=NULL;
+#endif
 #ifdef BLOOM
 	res->filter=NULL;
 #endif
@@ -47,12 +53,27 @@ Entry *level_entry_copy(Entry *input){
 	Entry *res=(Entry*)malloc(sizeof(Entry));
 	res->key=input->key; res->pbn=input->pbn; res->end=input->end;
 	res->version=input->version;
-	res->bitset=(uint8_t*)malloc(KEYN/8);
-	if(input->bitset!=NULL)
+	if(input->bitset!=NULL){
+		res->bitset=(uint8_t*)malloc(KEYN/8);
 		memcpy(res->bitset,input->bitset,KEYN/8);
+	}
 #ifdef BLOOM
-	res->filter=bf_init(KEYN,input->filter->p);
-	memcpy(res->filter->body,input->filter->body,input->filter->targetsize);
+	if(input->filter!=NULL){
+		res->filter=bf_init(KEYN,input->filter->p);
+		memcpy(res->filter->body,input->filter->body,input->filter->targetsize);
+	}
+	else
+		res->filter=NULL;
+#endif
+	
+#ifdef CACHE
+	res->data=input->data;
+	res->c_entry=input->c_entry;
+	if(res->c_entry!=NULL)
+		res->c_entry->entry=res;
+
+	input->c_entry=NULL;
+	input->data=NULL;
 #endif
 	res->parent=NULL;
 	return res;
@@ -63,6 +84,12 @@ void free_entry(Entry *entry){
 #ifdef BLOOM
 	if(entry->filter!=NULL)
 		bf_free(entry->filter);
+#endif
+#ifdef CACHE
+	if(entry->c_entry)
+		cache_delete_entry_only(CH,entry);
+	if(entry->data)
+		free(entry->data);
 #endif
 	free(entry);
 }
@@ -261,6 +288,7 @@ Node *level_insert(level* lev, Entry *entry){
 		printf("??");
 	}
 	if(lev->size+1>lev->m_size) return NULL;
+	entry->fpr=lev->fpr;
 	if(lev->start>entry->key)
 		lev->start=entry->key;
 	if(lev->end<entry->end)
@@ -526,6 +554,15 @@ void level_print(level *lev){
 	printf("size:%d\n", lev->size);
 	while(1){
 		printf("%u\n",iter->key);
+#ifdef CACHE
+		if(iter->c_entry){
+			if(iter->key!=iter->c_entry->entry->key){
+				printf("fuck\n");
+				sleep(1);
+			}
+			printf("cache here! %d\n", iter->c_entry->entry->key);
+		}
+#endif
 		if(startN!=NULL && cnt <startN->count){
 			iter=startN->children[cnt++].entry;
 		}
