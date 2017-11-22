@@ -128,6 +128,7 @@ int8_t lr_make_req(req_t *r){
 				th_req->type=LR_WRITE_T;
 				break;
 			case 2://get
+				threadset_gc_wait(&processor);
 				th_req->type=LR_READ_T;
 				if(isread==false){
 					key_cnt__=0;
@@ -146,7 +147,7 @@ int8_t lr_make_req(req_t *r){
 		th_req->params[2]=(void*)r->value;
 		th_req->params[3]=(void*)LSM;
 #else
-		r->key_info->key=keys[key_cnt__++];
+	//	r->key_info->key=keys[key_cnt__++];
 		th_req->params[1]=(void*)&r->key_info->key;
 		th_req->params[2]=(void*)r->value_info->value;
 		th_req->params[3]=(void*)LSM;

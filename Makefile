@@ -15,13 +15,13 @@ CFLAGS  +=\
 		  -DCONFIG_ENABLE_DEBUG \
 		  -DUSE_PMU \
 		  -DUSE_NEW_RMW \
-		  -DENABLE_LIBFTL\
 		  -DLIBLSM\
 	#	  -DSERVER\
 	#	  -DM_CPY\
 	#	  -DM_QUEUE\
 	#	  -DM_COMPT\
 	#	  -DNOGC_TEST\
+		  -DENABLE_LIBFTL\
 
 
 INCLUDES :=     -I$(PWD) \
@@ -43,7 +43,6 @@ LIBS    :=\
 
 SRCS    :=\
 	bptree.cpp\
-	skiplist.cpp\
 	LR_inter.cpp\
 	lsmtree.cpp\
 	threading.cpp\
@@ -52,6 +51,7 @@ SRCS    :=\
 	ppa.cpp\
 	delete_set.cpp\
 	bloomfilter.cpp\
+	skiplist.cpp\
 	cache.c\
 
 
@@ -73,10 +73,13 @@ test: liblsm.a test.c
 	$(CC) $(INCLUDES) $(CFLAGS) -o $@ test.c liblsm.a $(LIBS)
 
 LIBLSM : liblsm.a lsm_main.cpp libmemio.a
-	$(CC) $(INCLUDES) $(CFLAGS) -o $@ lsm_main.cpp liblsm.a libmemio.a $(LIBS)
+	$(CC) $(INCLUDES) $(CFLAGS) -o $@ lsm_main.cpp liblsm.a $(LIBS) #libmemio.a
 
 TESTLSM : liblsm.a lsm_read.cpp libmemio.a
 	$(CC) $(INCLUDES) $(CFLAGS) -o $@ lsm_read.cpp liblsm.a libmemio.a $(LIBS)
+
+SKIPTEST: liblsm.a skip_test.c libmemio.a
+	$(CC) $(INCLUDES) $(CFLAGS) -o $@ skip_test.c liblsm.a libmemio.a $(LIBS)
 
 liblsm.a: $(TARGETOBJ)
 	$(AR) r $(@) $(TARGETOBJ)

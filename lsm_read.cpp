@@ -4,6 +4,7 @@
 #include"threading.h"
 #include"delete_set.h"
 #include"ppa.h"
+#include"lsmtree.h"
 #ifdef ENABLE_LIBFTL
 #include"libmemio.h"
 extern memio* mio;
@@ -29,32 +30,32 @@ int main(){
 	MeasureTime mt2;
 	measure_init(&mt2);
 	lr_inter_init();
-	int tfd=open("data/meta.data",O_RDONLY,0666);
-	int level_cnt;
-	read(tfd,&level_cnt,sizeof(level_cnt));
-	for(int i=0; i<level_cnt; i++){
-		level *lev=LSM->buf.disk[i];
-		level_load(lev,tfd);
-	}
-	skiplist_load(LSM->memtree,tfd);
+	
+	char location[]="data/meta.data";
+	lsmtree_load(LSM,location);
 	req_t *req;
 	KEYT key;
 	MS(&mt2);
+	srand(100);
 	for(int i=1; i<=INPUTSIZE; i++){
-		req=(req_t*)malloc(sizeof(req_t));
-		req->type=2;
+		req=(req_t*)malloc(sizeof(req_t));	
+		if(rand()%10==0){
+			req->type=1;
+		}
+		else
+			req->type=2;
 		if(i%1024==1){
 			printf("%d\n",i);
 		}
+
 		if(SEQUENCE==0){
-			key=keys[i];
+			key=rand()%(INPUTSIZE)+1;
 		}
 		else{
-			key=i;
+			key=keys[i];
 		}
 		req->key=key;
 #ifdef ENABLE_LIBFTL
-		//printf("main_alloc!\n");
 		req->dmaTag=memio_alloc_dma(req->type,&req->value);
 #else
 		req->value=(char*)malloc(PAGESIZE);

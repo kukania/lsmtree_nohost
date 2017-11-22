@@ -6,6 +6,7 @@
 #include"ppa.h"
 #ifdef ENABLE_LIBFTL
 #include"libmemio.h"
+extern memio* mio;
 #endif
 #include<sys/types.h>
 #include<sys/stat.h>
@@ -31,7 +32,6 @@ extern MeasureTime find;
 
 
 extern pthread_mutex_t endR;
-extern memio* mio;
 extern timeval max_time;
 extern int big_time_check;
 extern timeval max_time1,adding;
@@ -42,6 +42,11 @@ extern int pros_hit;
 extern int pros_hit2;
 extern int cache_hit;
 extern int mem_hit;
+extern int write_wait_check;
+extern int write_make_check;
+extern int read_end_check;
+extern int mixed_req_cnt;
+
 extern lsmtree *LSM;
 extern delete_set *header_segment;
 extern delete_set *data_segment;
@@ -121,43 +126,40 @@ int main(){
 		level_print(LSM->buf.disk[i]);
 	}*/
 	//sleep(10);
+	char location[]="data/meta.data";
+	lsmtree_save(LSM,location);
 	
-/*
-	int tfd=open("/home/koo/workspace/lsmtree_final/data/meta.data",O_RDWR|O_CREAT|O_TRUNC,0666);
-	int level_cnt=0;
-	for(int i=0; i<LEVELN; i++){
-		level *lev=LSM->buf.disk[i];
-		if(lev->size!=0){
-			level_cnt++;
-		}
-	}
-	write(tfd,&level_cnt,sizeof(level_cnt));
-	for(int i=0; i<level_cnt; i++){
-		level *lev=LSM->buf.disk[i];
-		if(lev->size!=0){
-			level_save(lev,tfd);
-		}
-	}
-	skiplist_save(LSM->memtree,tfd);
-*/
-
 	processor.threads[0].flag=0;
 	printf("read!\n");
 	pthread_t thr;
 	utils_flag=true;
+	write_wait_check=0;
+	write_make_check=0;
+	read_end_check=0;
 	//pthread_create(&thr,NULL,util_check,NULL);
 	MS(&mt);
 	//printf("??");
+	int divide=INPUTSIZE/3;
 	for(int i=1; i<=INPUTSIZE; i++){
 		req=(req_t*)malloc(sizeof(req_t));
-		req->type=2;
+		mixed_req_cnt++;
+		if(i%divide==0){
+			MT(&mt);
+			MS(&mt);
+		}
+		if(rand()%10==0){
+			req->type=1;
+		}
+		else
+			req->type=2;
 		if(i%1024==1){
-		//	printf("%d\n",i);
+			printf("%d\n",i);
 		}
 		if(SEQUENCE==0){
 	//		key=INT_MAX;
-			key=keys[i-1];
+	//		key=rand()%INPUTSIZE+1;
 	//		key=rand()%INT_MAX;
+			key=keys[i];
 		}
 		else{
 			key=i;
@@ -173,7 +175,8 @@ int main(){
 		lr_make_req(req);
 	}
 	//printf("throw all read req!\n");
-	threadset_read_wait(&processor);
+	//threadset_read_wait(&processor);
+	//threadset_mixed_wait();
 	MT(&mt);
 	printf("meta_read_data:%d\n",meta_read_data);
 	//measure_end(&mt,"read_end");

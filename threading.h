@@ -87,4 +87,5 @@ void threadset_read_wait(threadset*);
 void threadset_gc_assign(threadset*,lsmtree_gc_req_t *);
 void threadset_gc_wait(threadset*);
 void threadset_debug_print(threadset*);
+void threadset_mixed_wait();
 #endif

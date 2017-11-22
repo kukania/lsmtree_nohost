@@ -571,7 +571,8 @@ KEYT skiplist_data_write(skiplist *data,int fd,lsmtree_gc_req_t * req){
 #else
 			child_req->seq_number=seq_number++;
 			child_req->isgc=false;
-			memio_write(mio,temp_p,(uint64_t)(PAGESIZE),(uint8_t*)temp->value,1,(void*)child_req,child_req->req->dmaTag);
+			if(child_req->req!=NULL)
+				memio_write(mio,temp_p,(uint64_t)(PAGESIZE),(uint8_t*)temp->value,1,(void*)child_req,child_req->req->dmaTag);
 #endif
 		}
 		else{
@@ -738,23 +739,23 @@ void skiplist_load(skiplist* input, int fd){
 	}
 }
 
-sktable *skiplist_to_sk(skiplist *data,uint8_t **bitset){
-	snode *temp=data->header->list[1];
+sktable *skiplist_to_sk(skiplist *data){
 	sktable *res=(sktable*)malloc(sizeof(sktable));
-	uint8_t *target_bitset=(uint8_t*)malloc(sizeof(uint8_t)*(KEYN/8));
+	//uint8_t *target_bitset=(uint8_t*)malloc(sizeof(uint8_t)*(KEYN/8));
 	int number=0;
+	snode *temp=data->header->list[1];
 	for(int i=0;temp!=data->header; i++ ){
 		res->meta[i].key=temp->key;
-		res->meta[i].ppa=temp->ppa;
+		res->meta[i].ppa=temp->ppa;/*
 		int bit_n=i/8;
 		int offset=i%8;
 		if(temp->vflag){
 			target_bitset[bit_n]|=(1<<offset);
-		}
+		}*/
 		temp=temp->list[1];
 		number++;
 	}
-	(*bitset)=target_bitset;
+//	(*bitset)=target_bitset;
 
 	for(int i=number; i<KEYN; i++){
 		res->meta[i].key=NODATA;
@@ -763,30 +764,15 @@ sktable *skiplist_to_sk(skiplist *data,uint8_t **bitset){
 	return res;
 }
 
-#ifdef DEBUG
+/*
 int main(){
-	skiplist * temp;
+	skiplist *list=(skiplist*)malloc(sizeof(skiplist));
+	skiplist_init(list);
 
-	char data[SNODE_SIZE]={0,};
-	int dfd=open("data/test_data.skip",O_CREAT|O_RDWR|O_TRUNC,0666);
-	int hfd=open("data/test_header.skip",O_CREAT|O_RDWR|O_TRUNC,0666);
-	for(int i=0; i<2; i++){
-		temp=(skiplist*)malloc(sizeof(skiplist));
-		skiplist_init(temp);
-		for(int j=0+i*KEYN; j<(i+1)*KEYN; j++){
-			memcpy(data,&j,sizeof(j));
-			skiplist_insert(temp,j,data,true);
-		}
-		skiplist_write(temp,i,hfd,dfd);
-		skiplist_free(temp);
+	for(int i=0; i<INPUTSIZE; i++){
+		skiplist_insert(list,rand()%INPUTSIZE,NULL,NULL,true);
+		skiplist_find(list,rand()%INPUTSIZE);
 	}
 
-	sktable *t;
-	for(int i=0; i<2; i++){
-		t=skiplist_read(i,hfd,dfd);
-		for(int j=0; j<KEYN; j++){
-			printf("%d\n",t->meta[j].key);
-		}
-	}
-}
-#endif
+	return 0;
+}*/

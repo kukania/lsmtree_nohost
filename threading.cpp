@@ -20,6 +20,7 @@ pthread_mutex_t read_lock;
 pthread_cond_t read_cond;
 pthread_mutex_t write_lock;
 pthread_cond_t write_cond;
+int mixed_req_cnt;
 
 extern MeasureTime mt;
 extern MeasureTime bp;
@@ -33,6 +34,7 @@ int read_end_check;
 int write_make_check;
 extern int write_wait_check;
 pthread_mutex_t write_check_lock;
+pthread_mutex_t gc_read_lock;
 int temp_check;
 void threading_init(threading *input){
 	pthread_mutex_init(&write_check_lock,NULL);
@@ -68,7 +70,7 @@ void threadset_init(threadset* input){
 	pthread_mutex_init(&input->th_cnt_lock,NULL);
 	pthread_mutex_init(&input->gc_lock,NULL);
 	pthread_mutex_init(&input->read_lock,NULL);
-
+	pthread_mutex_init(&gc_read_lock,NULL);
 #ifdef M_QUEUE
 
 #else
@@ -101,15 +103,15 @@ void threadset_init(threadset* input){
 	input->read_q=new mpmc_bounded_queue_t<void*>(THREADQN);
 	input->gc_q=new mpmc_bounded_queue_t<void*>(2);
 #else
-	#ifdef M_QUEUE
-		input->req_q=new std::queue<void *>();
-		input->read_q=new std::queue<void *>();
-		input->gc_q=new std::queue<void *>();
-	#else
-		input->req_q=new spsc_bounded_queue_t<void*>(THREADQN);
-		input->read_q=new spsc_bounded_queue_t<void*>(THREADQN);
-		input->gc_q=new spsc_bounded_queue_t<void*>(2);
-	#endif
+#ifdef M_QUEUE
+	input->req_q=new std::queue<void *>();
+	input->read_q=new std::queue<void *>();
+	input->gc_q=new std::queue<void *>();
+#else
+	input->req_q=new spsc_bounded_queue_t<void*>(THREADQN);
+	input->read_q=new spsc_bounded_queue_t<void*>(THREADQN);
+	input->gc_q=new spsc_bounded_queue_t<void*>(2);
+#endif
 #endif
 	//	input->req_q=create_queue();
 
@@ -192,7 +194,7 @@ void* thread_gc_main(void *input){
 				if(i!=0){
 					if(LSM->buf.disk[i]->size + LSM->buf.disk[i-1]->m_size >= LSM->buf.disk[i]->m_size){
 						if(i==LEVELN-1){
-						
+
 						}
 						else{
 							src=LSM->buf.disk[i];
@@ -204,7 +206,7 @@ void* thread_gc_main(void *input){
 						}
 					}
 				}
-				
+
 				if(LSM->buf.disk[i]->size >= LSM->buf.disk[i]->m_size){
 					if(i==LEVELN-1){
 					}
@@ -227,8 +229,8 @@ void* thread_gc_main(void *input){
 			lsm_req->target_number=0;
 			lsm_req->flag=1-1;//lsm_req->flag for oob
 			result_entry=make_entry(data->start,data->end,0);
-//			result_entry->bitset=data->bitset;
-//			skiplist_meta_free(data);
+			//			result_entry->bitset=data->bitset;
+			//			skiplist_meta_free(data);
 			lsm_req->data=(char*)data;
 			compaction(LSM,NULL,LSM->buf.disk[0],result_entry,lsm_req);
 			lsm_req->end_req(lsm_req);
@@ -242,10 +244,10 @@ void* thread_main(void *input){
 	int cnt=0;
 	//
 	cpu_set_t cpuset;
-   	//CPU_ZERO(&cpuset);
-   	//CPU_SET(2, &cpuset);
+	//CPU_ZERO(&cpuset);
+	//CPU_SET(2, &cpuset);
 	pthread_t current_thread = pthread_self();
-//	pthread_setaffinity_np(current_thread, sizeof(cpu_set_t), &cpuset);
+	//	pthread_setaffinity_np(current_thread, sizeof(cpu_set_t), &cpuset);
 	//nice(-20);
 	//*/
 	threadset *master=(threadset*)input;
@@ -299,15 +301,6 @@ void* thread_main(void *input){
 			break;
 		}
 #endif
-		/*
-		if(check_flll==0){
-			check_flll=true;
-			MS(&gt);
-		}
-		else{
-			MT(&gt);
-			MS(&gt);
-		}*/
 		lsm_req=(lsmtree_req_t*)data;
 		pthread_mutex_lock(&myth->terminate);
 		if(myth->terminateflag){
@@ -325,9 +318,11 @@ void* thread_main(void *input){
 			switch(lsm_req->type){
 				case DISK_READ_T:
 					value=(char*)lsm_req->params[2];
+					pthread_mutex_lock(&gc_read_lock);
 					test_num=thread_level_get(LSM,*key,myth,value,lsm_req,lsm_req->flag);
+					pthread_mutex_unlock(&gc_read_lock);
 					if(test_num<=0){
-	//					printf("[%u]not_found\n",*key);
+						//					printf("[%u]not_found\n",*key);
 						myth->notfound++;
 #ifdef SERVER
 						lsm_req->req->type_info->type=-1;
@@ -340,7 +335,9 @@ void* thread_main(void *input){
 				case LR_READ_T:
 					value=(char*)lsm_req->params[2];
 					pthread_mutex_init(&lsm_req->meta_lock,NULL);
+					pthread_mutex_lock(&gc_read_lock);
 					test_num=thread_get(LSM,*key,myth,value,lsm_req);
+					pthread_mutex_unlock(&gc_read_lock);
 					if(test_num==0){
 						//printf("[%u]not_found\n",*key);
 						myth->notfound++;
@@ -390,7 +387,7 @@ void threadset_read_assign(threadset* input, lsmtree_req_t *req){
 		printf("assign NULL\n");
 #ifdef M_QUEUE
 	while(input->read_q->size()>THREADQN){
-	
+
 	}
 	pthread_mutex_lock(&input->read_lock);
 	input->read_q->push((void*)req);
@@ -407,7 +404,7 @@ void threadset_read_assign(threadset* input, lsmtree_req_t *req){
 void threadset_assign(threadset* input, lsmtree_req_t *req){
 #ifdef M_QUEUE
 	while(input->req_q->size()>THREADQN){
-	
+
 	}
 	pthread_mutex_lock(&input->req_lock);
 	input->req_q->push((void*)req);
@@ -435,7 +432,7 @@ void threadset_gc_wait(threadset *input){
 void threadset_read_wait(threadset *input){
 	while(read_end_check<=INPUTSIZE-20){
 		//printf("%d\n",read_end_check);
-		
+
 	}
 }
 void threadset_request_wait(threadset *input){
@@ -459,6 +456,21 @@ void threadset_end(threadset *input){
 	}
 	return;
 }
+
+
+void threadset_mixed_wait(){
+	int temp=mixed_req_cnt-write_make_check;
+	write_make_check/=1024;
+	while(1){
+		if(write_make_check<=write_wait_check+1024){
+			if(read_end_check-5<=temp){
+				break;
+			}
+		}
+	}   
+}
+
+
 
 void threadset_debug_print(threadset *input){
 	int all_cache_hit=0;

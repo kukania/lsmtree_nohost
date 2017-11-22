@@ -71,7 +71,7 @@ skIterator* skiplist_getIterator(skiplist *list);
 void skiplist_traversal(skiplist *data);
 void sktable_print(sktable *);
 bool sktable_check(sktable*);
-sktable *skiplist_to_sk(skiplist *,uint8_t **);
+sktable *skiplist_to_sk(skiplist *);
 
 void skiplist_save(skiplist *,int fd);
 void skiplist_load(skiplist*, int fd);

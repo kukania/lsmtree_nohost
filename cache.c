@@ -1,7 +1,8 @@
 #include"cache.h"
 #include"lsmtree.h"
+#ifdef ENABLE_LIBFTL
 #include"libmemio.h"
-
+#endif
 #include<stdlib.h>
 #include<string.h>
 extern lsmtree *LSM;
@@ -17,12 +18,7 @@ cache_entry * cache_insert(cache *c, Entry *ent, int dmatag){
 		cache_delete(c,cache_get(c));
 	}
 	cache_entry *c_ent=(cache_entry*)malloc(sizeof(cache_entry));
-	sktable *temp=ent->data;
-	ent->data=(sktable*)malloc(sizeof(sktable));
-	memcpy(ent->data,temp,sizeof(sktable));
-		
-	memio_free_dma(2,dmatag);
-	
+
 	c_ent->entry=ent;
 	if(c->bottom==NULL){
 		c->bottom=c_ent;
@@ -43,18 +39,10 @@ cache_entry * cache_insert(cache *c, Entry *ent, int dmatag){
 }
 int delete_cnt_check;
 bool cache_delete(cache *c, Entry * ent){
-	
 	if(c->n_size==0) return false;
 	cache_entry *c_ent=ent->c_entry;
-
-	//free(ent->data);
-/*
-#ifdef ENABLE_LIBFTL
-		memio_free_dma(2,c_ent->dmatag);
-#else
+	if(ent->data)
 		free(ent->data);
-#endif*/
-	free(ent->data);
 	ent->data=NULL;
 	c->n_size--;
 	free(c_ent);
@@ -64,8 +52,8 @@ bool cache_delete(cache *c, Entry * ent){
 
 bool cache_delete_entry_only(cache *c, Entry *ent){
 	if(c->n_size==0) return false;
-	
 	cache_entry *c_ent=ent->c_entry;
+	if(c_ent==NULL) return false;
 	if(c->bottom==c->top && c->top==c_ent){
 		c->top=c->bottom=NULL;
 	}
@@ -84,6 +72,7 @@ bool cache_delete_entry_only(cache *c, Entry *ent){
 		cache_entry *down=c_ent->down;
 		
 		up->down=down;
+		down->up=up;
 	}
 	c->n_size--;
 	free(c_ent);
@@ -136,9 +125,12 @@ void cache_print(cache *c){
 	cache_entry *start=c->top;
 	print_number=0;
 	while(start!=NULL){
-		printf("iter key:%d\n ",start->entry->key);
 		if(!start->entry->data)
 			printf("nodata!!\n");
+		if(start->entry->data){
+			if(start->entry->c_entry!=start)
+				printf("fuck\n");
+		}
 		print_number++;
 		if(print_number>c->n_size)
 			exit(1);
