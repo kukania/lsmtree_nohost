@@ -62,7 +62,7 @@ KEYT skiplist_write(skiplist*,lsmtree_gc_req_t *,int hfd, int dfd,double fpr);
 KEYT skiplist_meta_write(skiplist *, int fd,struct lsmtree_gc_req_t*,double fpr);
 KEYT skiplist_data_write(skiplist *, int fd,struct lsmtree_gc_req_t*);
 void skiplist_sk_data_write(sktable *,int fd,struct lsmtree_gc_req_t*);
-skiplist* skiplist_cut(skiplist *,KEYT num);
+skiplist* skiplist_cut(skiplist *,KEYT num,KEYT limit);
 void skiplist_ex_value_free(skiplist *list);
 void skiplist_meta_free(skiplist *list);
 void skiplist_free(skiplist *list);
@@ -72,6 +72,7 @@ void skiplist_traversal(skiplist *data);
 void sktable_print(sktable *);
 bool sktable_check(sktable*);
 sktable *skiplist_to_sk(skiplist *);
+sktable *skiplist_to_sk_extra(skiplist *,float fpr,uint8_t**,BF**);
 
 void skiplist_save(skiplist *,int fd);
 void skiplist_load(skiplist*, int fd);

@@ -4,6 +4,7 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<limits.h>
+#include<pthread.h>
 #ifdef CACHE
 extern cache *CH;
 #endif
@@ -49,7 +50,7 @@ Entry *make_entry(KEYT key,KEYT end,KEYT pbn1){
 	res->iscompactioning=false;
 	return res;
 }
-Entry *level_entry_copy(Entry *input){
+Entry *level_entry_copy(Entry *input, bool cachecpy){
 	Entry *res=(Entry*)malloc(sizeof(Entry));
 	res->key=input->key; res->pbn=input->pbn; res->end=input->end;
 	res->version=input->version;
@@ -67,14 +68,21 @@ Entry *level_entry_copy(Entry *input){
 #endif
 	
 #ifdef CACHE
-	res->data=input->data;
-	res->c_entry=input->c_entry;
-	if(res->c_entry!=NULL)
-		res->c_entry->entry=res;
-
-	input->c_entry=NULL;
-	input->data=NULL;
+	if(cachecpy){
+		res->data=input->data;
+		res->c_entry=input->c_entry;
+		if(res->c_entry!=NULL)
+			res->c_entry->entry=res;
+		input->c_entry=NULL;
+		input->data=NULL;
+	}
+	else{
+		res->data=NULL;
+		res->c_entry=NULL;
+	}
 #endif
+	res->iscompactioning=false;
+	res->version=0;
 	res->parent=NULL;
 	return res;
 }
@@ -102,9 +110,11 @@ level *level_init(level* input, int size){
 	input->size=0;
 	input->version=0;
 	input->m_size=size;
+	input->number=0;
 	input->depth=0;
 	input->start=UINT_MAX;
 	input->end=0;
+	pthread_mutex_init(&input->level_lock,NULL);
 	return input;
 }
 
@@ -540,6 +550,7 @@ Entry *level_getFirst(level *lev){
 void level_free(level *lev){
 	while(level_delete(lev,0)!=NULL){
 	};
+	pthread_mutex_destroy(&lev->level_lock);
 	free(lev->root);
 	free(lev);
 }
@@ -603,7 +614,22 @@ void level_save(level *lev,int fd){
 		}
 	}   
 }
+level* level_copy(level *des){
+	level *target_des;
+	target_des=(level*)malloc(sizeof(level));
+	target_des=level_init(target_des,des->m_size);
+	target_des->fpr=des->fpr;
+	
+	Iter *level_iter=level_get_Iter(des);
+	Entry *iter_temp;
+	while((iter_temp=level_get_next(level_iter))!=NULL){
+		Entry *copied_entry=level_entry_copy(iter_temp,false);
+		level_insert(target_des,copied_entry);
+	}
+	free(level_iter);
 
+	return target_des;
+}
 void level_load(level *lev, int fd){
 	int size;
 

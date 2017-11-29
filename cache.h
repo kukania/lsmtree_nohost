@@ -4,6 +4,7 @@
 #include"utils.h"
 #include"bptree.h"
 #include"skiplist.h"
+#include<pthread.h>
 typedef struct Entry Entry;
 typedef struct cache_entry{
 	struct Entry* entry;
@@ -17,6 +18,7 @@ typedef struct cache{
 	int n_size;
 	cache_entry *top;
 	cache_entry *bottom;
+	pthread_mutex_t cache_lock;
 }cache;
 
 void cache_init(cache *);

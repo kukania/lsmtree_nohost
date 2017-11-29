@@ -184,7 +184,6 @@ int8_t lr_end_req(lsmtree_req_t *r){
 	void *data=NULL;
 	switch(r->type){
 		case LR_DELETE_PR:
-			printf("%d\n",r->type);
 			value=(char*)r->params[2];
 			memcpy(value,r->data,PAGESIZE);
 			pthread_mutex_unlock(&r->meta_lock);

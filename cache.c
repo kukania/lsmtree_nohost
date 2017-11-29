@@ -11,11 +11,15 @@ void cache_init(cache *c){
 	c->n_size=0;
 	c->top=NULL;
 	c->bottom=NULL;
+	pthread_mutex_init(&c->cache_lock,NULL);
 }
 
 cache_entry * cache_insert(cache *c, Entry *ent, int dmatag){
+	pthread_mutex_lock(&c->cache_lock);
 	if(c->m_size==c->n_size){
+		pthread_mutex_unlock(&c->cache_lock);
 		cache_delete(c,cache_get(c));
+		pthread_mutex_lock(&c->cache_lock);
 	}
 	cache_entry *c_ent=(cache_entry*)malloc(sizeof(cache_entry));
 
@@ -26,6 +30,7 @@ cache_entry * cache_insert(cache *c, Entry *ent, int dmatag){
 		c->bottom->down=NULL;
 		c->top->up=NULL;
 		c->n_size++;
+		pthread_mutex_unlock(&c->cache_lock);
 		return c_ent;
 	}
 
@@ -35,11 +40,16 @@ cache_entry * cache_insert(cache *c, Entry *ent, int dmatag){
 	c->top=c_ent;
 	c_ent->up=NULL;
 	c->n_size++;
+	pthread_mutex_unlock(&c->cache_lock);
 	return c_ent;
 }
 int delete_cnt_check;
 bool cache_delete(cache *c, Entry * ent){
-	if(c->n_size==0) return false;
+	pthread_mutex_lock(&c->cache_lock);
+	if(c->n_size==0){
+		pthread_mutex_unlock(&c->cache_lock);
+		return false;
+	}
 	cache_entry *c_ent=ent->c_entry;
 	if(ent->data)
 		free(ent->data);
@@ -47,13 +57,21 @@ bool cache_delete(cache *c, Entry * ent){
 	c->n_size--;
 	free(c_ent);
 	ent->c_entry=NULL;
+	pthread_mutex_unlock(&c->cache_lock);
 	return true;
 }
 
 bool cache_delete_entry_only(cache *c, Entry *ent){
-	if(c->n_size==0) return false;
+	pthread_mutex_lock(&c->cache_lock);
+	if(c->n_size==0){
+		pthread_mutex_unlock(&c->cache_lock);
+		return false;
+	}
 	cache_entry *c_ent=ent->c_entry;
-	if(c_ent==NULL) return false;
+	if(c_ent==NULL) {
+		pthread_mutex_unlock(&c->cache_lock);
+		return false;
+	}
 	if(c->bottom==c->top && c->top==c_ent){
 		c->top=c->bottom=NULL;
 	}
@@ -77,11 +95,14 @@ bool cache_delete_entry_only(cache *c, Entry *ent){
 	c->n_size--;
 	free(c_ent);
 	ent->c_entry=NULL;
+	pthread_mutex_unlock(&c->cache_lock);
 	return true;
 }
 void cache_update(cache *c, Entry* ent){
+	pthread_mutex_lock(&c->cache_lock);
 	cache_entry *c_ent=ent->c_entry;
 	if(c->top==c_ent){ 
+		pthread_mutex_unlock(&c->cache_lock);
 		return;
 	}
 	if(c->bottom==c_ent){
@@ -100,10 +121,15 @@ void cache_update(cache *c, Entry* ent){
 	c_ent->up=NULL;
 	c_ent->down=c->top;
 	c->top=c_ent;
+	pthread_mutex_unlock(&c->cache_lock);
 }
 
 Entry* cache_get(cache *c){
-	if(c->n_size==0) return NULL;
+	pthread_mutex_lock(&c->cache_lock);
+	if(c->n_size==0){
+		pthread_mutex_unlock(&c->cache_lock);
+		return NULL;
+	}
 	cache_entry *res=c->bottom;
 	cache_entry *up=res->up;
 
@@ -117,6 +143,7 @@ Entry* cache_get(cache *c){
 	if(!res->entry->c_entry){
 		printf("hello\n");
 	}
+	pthread_mutex_unlock(&c->cache_lock);
 	return res->entry;
 }
 

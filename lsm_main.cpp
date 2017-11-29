@@ -75,13 +75,12 @@ int main(){
 	MS(&mt);
 	
 	int cnt=1;
-	char *temp_value=(char*)malloc(PAGESIZE);
 	for(int i=1; i<=INPUTSIZE; i++){
 		//printf("%d\n",i);
 		req=(req_t*)malloc(sizeof(req_t));
 		req->type=1;
 		if(i%1024==1){
-		//	printf("%d\n",i);
+	//		printf("%d\n",i);
 		}
 		if(SEQUENCE==0){
 			key=keys[i-1];
@@ -143,23 +142,15 @@ int main(){
 	for(int i=1; i<=INPUTSIZE; i++){
 		req=(req_t*)malloc(sizeof(req_t));
 		mixed_req_cnt++;
-		if(i%divide==0){
-			MT(&mt);
-			MS(&mt);
-		}
-		if(rand()%10==0){
+		if(rand()%10==0)
 			req->type=1;
-		}
 		else
 			req->type=2;
 		if(i%1024==1){
 			printf("%d\n",i);
 		}
 		if(SEQUENCE==0){
-	//		key=INT_MAX;
-	//		key=rand()%INPUTSIZE+1;
-	//		key=rand()%INT_MAX;
-			key=keys[i];
+			key=keys[i-1];
 		}
 		else{
 			key=i;

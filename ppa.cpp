@@ -66,11 +66,15 @@ KEYT getPPA(segment *input, void *req){
 	input->ppa->pop();
 	//KEYT res=queue_pop(input->ppa);
 	pthread_mutex_unlock(&input->ppa_lock);
+	if(res==17317)
+		printf("here!\n");
 	return res;
 }
 KEYT getRPPA(segment *input, void *req){
 	KEYT res=input->reserve_block * PAGENUM;
 	res+=input->reserve_block_point++;
+	if(res==17317)
+		printf("here!\n");
 	return res;
 }
 void freePPA(segment *input, KEYT in){

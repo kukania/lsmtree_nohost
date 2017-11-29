@@ -7,15 +7,15 @@
 #define KEYT uint32_t
 #define KEYN 1024
 #define PAGESIZE (8192)
-#define MUL 24
-#define LEVELN 5
+#define MUL 10
+#define LEVELN 8
 #define TARGETSIZEVALUE 500
 #define GIGASIZE 4
 #define INPUTSIZE (1024*128*(GIGASIZE))
 #define KEYRANGE (1024*128*(TARGETSIZEVALUE))
 #define CACHESIZE (128*(GIGASIZE)) //8kb *CACHESIZE, 128=1MB
 
-//#define NO_GC_TEST
+//#define NOGC_TEST
 #define BLOOM
 #define MONKEY_BLOOM
 #define CACHE
@@ -31,7 +31,7 @@
 #define ENDMERGE 0.5
 #define MAXC 10
 #define MAXNODE 250000
-#define SEQUENCE 0
+#define SEQUENCE 1
 #define READTEST
 #define GETTEST
 

@@ -46,6 +46,7 @@ typedef struct level{
 	KEYT start;
 	KEYT end;
 	KEYT version;
+	pthread_mutex_t level_lock;
 }level;
 typedef struct iterator{
 	Node *now;
@@ -54,7 +55,8 @@ typedef struct iterator{
 
 Node *level_find_leafnode(level *lev, KEYT key);
 Entry *make_entry(KEYT start, KEYT end,KEYT pbn);
-Entry *level_entry_copy(Entry *);
+Entry *level_entry_copy(Entry *,bool);
+level *level_copy(level*);
 level* level_init(level*,int size);
 Entry *level_find(level*,KEYT key);
 Entry *level_get_victim(level *);

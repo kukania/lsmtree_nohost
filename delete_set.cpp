@@ -9,6 +9,8 @@ extern lsmtree *LSM;
 #include"libmemio.h"
 extern memio *mio;
 #endif
+#include<execinfo.h>
+#define BT_BUF_SIZE 100
 extern lsmtree* LSM;
 uint64_t *oob;
 delete_set *data_segment;
@@ -33,12 +35,12 @@ void delete_init(){//for test
 	memset(oob,0,(MAXPAGE)*sizeof(uint64_t));
 	data_segment=(delete_set*)malloc(sizeof(delete_set));
 	header_segment=(delete_set *)malloc(sizeof(delete_set));
-	
-	segment_init(header_segment,0,10,false);
-	segment_init(data_segment,11,SEGNUM-3,true);
+
+	segment_init(header_segment,0,1,false);
+	segment_init(data_segment,2,SEGNUM-3,true);
 	/*
-	segment_init(data_segment,0,SEGNUM-5,true); // 0~SEGNUM-6, reserve SEGNUM-5
-	segment_init(header_segment,SEGNUM-4,1,false);*/
+	   segment_init(data_segment,0,SEGNUM-5,true); // 0~SEGNUM-6, reserve SEGNUM-5
+	   segment_init(header_segment,SEGNUM-4,1,false);*/
 	printf("[lsm]number of header ppa %d\n",header_segment->ppa->size());
 	printf("[lsm]number of data ppa %d\n",data_segment->ppa->size());
 }
@@ -47,8 +49,28 @@ void delete_ppa(delete_set *set,KEYT input){
 	return;
 #endif
 	if(input>SEGNUM*PAGENUM){
-		printf("data read fail!\n");
-	//	return;
+		printf("data read fail!, value:%d\n",input);
+		int j, nptrs;
+		void *buffer[BT_BUF_SIZE];
+		char **strings;
+
+		nptrs = backtrace(buffer, BT_BUF_SIZE);
+		printf("backtrace() returned %d addresses\n", nptrs);
+
+		/* The call backtrace_symbols_fd(buffer, nptrs, STDOUT_FILENO)
+		 *               would produce similar output to the following: */
+
+		strings = backtrace_symbols(buffer, nptrs);
+		if (strings == NULL) {
+			perror("backtrace_symbols");
+			exit(EXIT_FAILURE);
+		}
+
+		for (j = 0; j < nptrs; j++)
+			printf("%s\n", strings[j]);
+
+		free(strings);
+		//	return;
 		exit(-1);
 	}
 	int block_num=input/PAGENUM;
@@ -69,7 +91,7 @@ void delete_ppa(delete_set *set,KEYT input){
 		set->blocks[i].invalid_n++;
 		if(set->blocks[i].invalid_n > PAGENUM){
 			printf("over block! : %d %ld %ld\n",set->blocks[block_num].number,set->blocks[block_num].invalid_n,input);	
-	//		exit(1);
+			//		exit(1);
 		}
 	}
 }
@@ -92,9 +114,8 @@ int delete_get_victim(delete_set *set){
 	printf("[return info] %d\n",block_num);
 	return block_num;
 }
-int compaction___;
+extern level *target_des;
 int delete_trim_process_header(delete_set *set){
-	compaction___=0;
 	int block_num=delete_get_victim(set); //segment's order
 	if(block_num==-1)
 		return 0;
@@ -157,11 +178,23 @@ int delete_trim_process_header(delete_set *set){
 				}
 				KEYT key=KEYGET(temp_oob);
 				Entry *header=NULL;
+				int level=0;
 				for(int k=0; k<LEVELN; k++){
 					header=level_find(LSM->buf.disk[k],key);
-					if(header!=NULL && header->pbn==temp_p_key)
+					if(header!=NULL && header->pbn==temp_p_key){
+						level=k;
 						break;
+					}
 				}
+				if(target_des!=NULL && header==NULL){
+					header=level_find(target_des,key);
+					if(header!=NULL && header->pbn==temp_p_key){
+						level=-1;
+					}
+					else
+						header=NULL;
+				}
+
 				if(header->iscompactioning){
 					continue;
 				}
@@ -186,7 +219,14 @@ int delete_trim_process_header(delete_set *set){
 				req->end_req(req);				
 #endif
 				KEYT temp_pba=header->pbn;
-				header->pbn=new_pba;
+				if(level>=0){
+					pthread_mutex_lock(&LSM->buf.disk[level]->level_lock);
+					header->pbn=new_pba;
+					pthread_mutex_unlock(&LSM->buf.disk[level]->level_lock);
+				}
+				else{
+					header->pbn=new_pba;
+				}
 				oob[header->pbn]=new_oob;
 				delete_ppa(set,temp_pba);
 				free(sk);
@@ -214,6 +254,7 @@ int delete_trim_process_data(delete_set *set){
 #endif
 		segment_block_oob_clear(set,block_num);
 		segment_block_init(set,block_num);
+		segment_block_free_ppa(set,block_num);
 		//send trim operation
 		return 1;
 	}
@@ -265,82 +306,93 @@ int delete_trim_process_data(delete_set *set){
 				KEYT key=KEYGET(temp_oob);
 				Entry *header;
 				KEYT new_ppa=getRPPA(set,NULL);
+				int level=0;
 				for(int k=0; k<LEVELN; k++){ //header find
 					header=level_find(LSM->buf.disk[k],key);
-					if(header==NULL)
-						continue;
-					else{
-						//header read
-						if(!bf_check(header->filter,key)){
-							continue;
+					if(header==NULL){
+						if(k==LEVELN-1 && target_des!=NULL){
+							header=level_find(target_des,key);
+							level=-1;
 						}
-						req=delete_make_req(0);
-						sktable *sk_header=(sktable*)malloc(sizeof(sktable));
-						req->params[2]=(void*)sk_header;
+						else
+							continue;
+					}
+					//header read
+					if(!bf_check(header->filter,key)){
+						continue;
+					}
+					req=delete_make_req(0);
+					sktable *sk_header=(sktable*)malloc(sizeof(sktable));
+					req->params[2]=(void*)sk_header;
 #ifdef ENABLE_LIBFTL
-						KEYT temp_tag;
-						req->dmatag=memio_alloc_dma(2,&temp_p);
-						temp_tag=req->dmatag;
+					KEYT temp_tag;
+					req->dmatag=memio_alloc_dma(2,&temp_p);
+					temp_tag=req->dmatag;
 #else
-						temp_p=(char*)malloc(PAGESIZE);
+					temp_p=(char*)malloc(PAGESIZE);
 #endif
-						req->data=temp_p;
-						pthread_mutex_t *temp_mutex=&req->meta_lock;
+					req->data=temp_p;
+					pthread_mutex_t *temp_mutex=&req->meta_lock;
 
 #ifdef ENABLE_LIBFTL
-						memio_read(mio,header->pbn,(uint64_t)(PAGESIZE),(uint8_t *)req->data,1,req,req->dmatag);//target read
+					memio_read(mio,header->pbn,(uint64_t)(PAGESIZE),(uint8_t *)req->data,1,req,req->dmatag);//target read
 #else
-						lseek64(LSM->dfd,((off64_t)PAGESIZE)*header->pbn,SEEK_SET);
-						read(LSM->dfd,temp_p,PAGESIZE);
-						req->end_req(req);
+					lseek64(LSM->dfd,((off64_t)PAGESIZE)*header->pbn,SEEK_SET);
+					read(LSM->dfd,temp_p,PAGESIZE);
+					req->end_req(req);
 #endif
-						pthread_mutex_lock(temp_mutex);
-						pthread_mutex_destroy(temp_mutex);
+					pthread_mutex_lock(temp_mutex);
+					pthread_mutex_destroy(temp_mutex);
 #ifdef ENABLE_LIBFTL
-						memio_free_dma(2,temp_tag);
+					memio_free_dma(2,temp_tag);
 #else
-						free(temp_p);
+					free(temp_p);
 #endif
-						keyset *target;
-						if((target=skiplist_keyset_find(sk_header,key))){
-							if(target->ppa==temp_p_key){
-								target->ppa=new_ppa;//update
-								req=delete_make_req(1);
-								uint64_t new_oob_pba=0;
-								KEYT new_pba=getPPA(header_segment,(void*)req);
-								KEYSET(new_oob_pba,header->key);
-								FLAGSET(new_oob_pba,0);
+					keyset *target;
+					if((target=skiplist_keyset_find(sk_header,key))){
+						if(target->ppa==temp_p_key){
+							target->ppa=new_ppa;//update
+							req=delete_make_req(1);
+							uint64_t new_oob_pba=0;
+							KEYT new_pba=getPPA(header_segment,(void*)req);
+							KEYSET(new_oob_pba,header->key);
+							FLAGSET(new_oob_pba,0);
 #ifdef ENABLE_LIBFTL
-								req->dmatag=memio_alloc_dma(1,&temp_p);
+							req->dmatag=memio_alloc_dma(1,&temp_p);
 #else
-								temp_p=(char*)malloc(PAGESIZE);
+							temp_p=(char*)malloc(PAGESIZE);
 #endif
-								req->data=temp_p;
-								memcpy(temp_p,sk_header,PAGESIZE);
+							req->data=temp_p;
+							memcpy(temp_p,sk_header,PAGESIZE);
 #ifdef ENABLE_LIBFTL
-								memio_write(mio,new_pba,(uint64_t)PAGESIZE,(uint8_t*)req->data,1,req,req->dmatag);
+							memio_write(mio,new_pba,(uint64_t)PAGESIZE,(uint8_t*)req->data,1,req,req->dmatag);
 #else
-								lseek64(LSM->dfd,((off64_t)PAGESIZE)*new_pba,SEEK_SET);
-								write(LSM->dfd,temp_p,PAGESIZE);
-								req->end_req(req);				
+							lseek64(LSM->dfd,((off64_t)PAGESIZE)*new_pba,SEEK_SET);
+							write(LSM->dfd,temp_p,PAGESIZE);
+							req->end_req(req);				
 #endif
-								KEYT temp_pba=header->pbn;
-								header->pbn=new_pba;
+							KEYT temp_pba=header->pbn;
+							header->pbn=new_pba;
+							if(level!=-1){
+								pthread_mutex_lock(&LSM->buf.disk[k]->level_lock);
 								oob[header->pbn]=new_oob_pba;
-								delete_ppa(header_segment,temp_pba);
-								free(sk_header);
-								break;
+								pthread_mutex_unlock(&LSM->buf.disk[k]->level_lock);
 							}
-							else{
-								free(sk_header);
-								continue; //deprecated data!!, old data
-							}
+							else
+								oob[header->pbn]=new_oob_pba;
+							delete_ppa(header_segment,temp_pba);
+							free(sk_header);
+							break;
 						}
 						else{
 							free(sk_header);
-							continue;
+							continue; //deprecated data!!, old data
 						}
 					}
+					else{
+						free(sk_header);
+						continue;
+					}			
 				}
 				//write data
 				uint64_t new_oob=0;

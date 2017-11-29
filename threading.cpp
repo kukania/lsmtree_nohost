@@ -322,7 +322,7 @@ void* thread_main(void *input){
 					test_num=thread_level_get(LSM,*key,myth,value,lsm_req,lsm_req->flag);
 					pthread_mutex_unlock(&gc_read_lock);
 					if(test_num<=0){
-						//					printf("[%u]not_found\n",*key);
+						printf("level find [%u]not_found\n",*key);
 						myth->notfound++;
 #ifdef SERVER
 						lsm_req->req->type_info->type=-1;
@@ -339,7 +339,7 @@ void* thread_main(void *input){
 					test_num=thread_get(LSM,*key,myth,value,lsm_req);
 					pthread_mutex_unlock(&gc_read_lock);
 					if(test_num==0){
-						//printf("[%u]not_found\n",*key);
+						printf("thread get [%u]not_found\n",*key);
 						myth->notfound++;
 #ifdef SERVER
 						lsm_req->req->type_info->type=-1;
@@ -387,7 +387,6 @@ void threadset_read_assign(threadset* input, lsmtree_req_t *req){
 		printf("assign NULL\n");
 #ifdef M_QUEUE
 	while(input->read_q->size()>THREADQN){
-
 	}
 	pthread_mutex_lock(&input->read_lock);
 	input->read_q->push((void*)req);
@@ -423,16 +422,17 @@ void threadset_gc_assign(threadset* input ,lsmtree_gc_req_t *req){
 	input->gc_q->push((void*)req);
 	pthread_mutex_unlock(&input->gc_lock);
 #else
-	while(!input->gc_q->enqueue(req)){}
+	while(!input->gc_q->enqueue(req)){
+	}
 #endif
 }
 void threadset_gc_wait(threadset *input){
-	while(gc_end_check){}
+	while(gc_end_check){
+	}
 }
 void threadset_read_wait(threadset *input){
 	while(read_end_check<=INPUTSIZE-20){
 		//printf("%d\n",read_end_check);
-
 	}
 }
 void threadset_request_wait(threadset *input){

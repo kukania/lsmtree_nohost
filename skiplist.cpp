@@ -493,7 +493,7 @@ KEYT skiplist_meta_write(skiplist *data,int fd, lsmtree_gc_req_t *req,double fpr
 				test=temp->key;
 			}
 			else{
-				printf("??");
+				printf("??\n");
 			}
 			temp_req->keys[i].ppa=temp->ppa;
 			if(temp->vflag){
@@ -518,7 +518,7 @@ KEYT skiplist_meta_write(skiplist *data,int fd, lsmtree_gc_req_t *req,double fpr
 		sktable test_sk;
 		memcpy(&test_sk,temp_req->keys,PAGESIZE);
 		uint64_t temp_oob=0;
-		KEYSET(temp_oob,temp_req->keys[i].key);
+		KEYSET(temp_oob,temp_req->keys[0].key);
 		FLAGSET(temp_oob,0);
 		oob[temp_pp]=temp_oob;
 #ifndef ENABLE_LIBFTL
@@ -618,16 +618,34 @@ void skiplist_sk_data_write(sktable *sk, int fd, lsmtree_gc_req_t *req){
 	}
 }
 
-skiplist *skiplist_cut(skiplist *list,KEYT num){
+skiplist *skiplist_cut(skiplist *list,KEYT num,KEYT limit){
 	if(num==0) return NULL;
 	if(list->size<num) return NULL;
 	skiplist *res=(skiplist*)malloc(sizeof(skiplist));
 	res=skiplist_init(res);
 	snode *h=res->header;
 	res->start=-1;
+	snode *header=list->header;
 	for(KEYT i=0; i<num; i++){
 		snode *temp=skiplist_pop(list);
 		if(temp==NULL) return NULL;
+		if(temp->key>=limit){
+			snode *temp_header=res->header->list[1];
+			snode *temp_s;
+			while(temp_header!=res->header){
+				temp_s=skiplist_insert(list,temp_header->key,NULL,NULL,temp_header->vflag);
+				temp_s->ppa=temp_header->ppa;
+				temp_header=temp_header->list[1];
+			}
+			temp_s=skiplist_insert(list,temp->key,NULL,NULL,temp->vflag);
+			temp_s->ppa=temp->ppa;
+			free(temp->list);
+			if(temp->req)
+				free(temp->req);
+			free(temp);
+			skiplist_free(res);
+			return NULL;
+		}
 		res->start=temp->key>res->start?res->start:temp->key;
 		res->end=temp->key>res->end?temp->key:res->end;
 		h->list[1]=temp;
@@ -738,7 +756,6 @@ void skiplist_load(skiplist* input, int fd){
 		skiplist_insert(input,key,value,NULL,vflag);
 	}
 }
-
 sktable *skiplist_to_sk(skiplist *data){
 	sktable *res=(sktable*)malloc(sizeof(sktable));
 	//uint8_t *target_bitset=(uint8_t*)malloc(sizeof(uint8_t)*(KEYN/8));
@@ -764,6 +781,51 @@ sktable *skiplist_to_sk(skiplist *data){
 	return res;
 }
 
+sktable *skiplist_to_sk_extra(skiplist *data,float fpr, uint8_t**bitset, BF **filter){
+	sktable *res=(sktable*)malloc(sizeof(sktable));
+
+	uint8_t *target_bitset;
+	if(bitset!=NULL)
+		target_bitset=(uint8_t*)malloc(sizeof(uint8_t)*(KEYN/8));
+
+	BF* target_filter;
+	if(filter!=NULL)
+		target_filter=bf_init(KEYN,fpr);
+
+	int number=0;
+	snode *temp=data->header->list[1];
+	for(int i=0;temp!=data->header; i++ ){
+		res->meta[i].key=temp->key;
+		res->meta[i].ppa=temp->ppa;
+
+		if(bitset!=NULL){
+			int bit_n=i/8;
+			int offset=i%8;
+			if(temp->vflag){
+				target_bitset[bit_n]|=(1<<offset);
+			}
+		}
+
+		if(filter!=NULL)
+			bf_set(target_filter,res->meta[i].key);
+		
+		temp=temp->list[1];
+		number++;
+	}
+
+	if(bitset!=NULL)
+		(*bitset)=target_bitset;
+
+	if(filter!=NULL)
+		(*filter)=target_filter;
+
+
+	for(int i=number; i<KEYN; i++){
+		res->meta[i].key=NODATA;
+		res->meta[i].ppa=NODATA;
+	}
+	return res;
+}
 /*
 int main(){
 	skiplist *list=(skiplist*)malloc(sizeof(skiplist));
