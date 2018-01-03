@@ -27,6 +27,7 @@ extern delete_set *data_segment;
 extern KEYT DELETEDKEY;
 extern uint64_t *oob;
 
+extern MeasureTime mem;
 extern int write_make_check;
 #ifdef THREAD
 pthread_mutex_t dfd_lock;
@@ -88,14 +89,7 @@ snode *skiplist_find(skiplist *list, KEYT key){
 		return x->list[1];
 	return NULL;
 }
-static snode * skiplist_find_level(KEYT key, int level, skiplist *list){
-	snode *temp=list->header;
-	int _level=level;
-	while(temp->list[_level]->key<key){
-		temp=temp->list[_level];
-	}
-	return temp;
-}
+
 static int getLevel(){
 	int level=1;
 	int temp=rand();
@@ -119,9 +113,6 @@ bool sktable_check(sktable *sk){
 	for(int i=0; i<KEYN; i++){
 		if(key<sk->meta[i].key){
 			key=sk->meta[i].key;
-			if(key==235391){
-				printf("here!\n");
-			}
 			if(sk->meta[i].ppa>SEGNUM*PAGENUM){
 				if(sk->meta[i].ppa==NODATA)
 					break;
@@ -372,12 +363,17 @@ sktable* skiplist_data_read(sktable *list, KEYT pbn, int fd){/*
 keyset *skiplist_keyset_find(sktable *t, KEYT key){
 	short now;
 	KEYT start=0,end=KEYN;
-	KEYT mid=(start+end)/2;
+	KEYT mid;
 	if(t->meta[0].key > key)
 		return NULL;
 	if(t->meta[KEYN-1].key < key)
 		return NULL;
 	while(1){
+		mid=(start+end)/2;
+#ifdef DO_PREFETCH
+		__builtin_prefetch(&t->meta[(mid+1+end)/2].key,0,1);
+		__builtin_prefetch(&t->meta[(start+mid-1)/2].key,0,1);
+#endif
 		if(start>end) return NULL;
 		if(start==end){
 			if(key==t->meta[mid].key){
@@ -390,11 +386,9 @@ keyset *skiplist_keyset_find(sktable *t, KEYT key){
 			return &t->meta[mid];
 		else if(key<t->meta[mid].key){
 			end=mid-1;
-			mid=(start+end)/2;
 		}
 		else if(key> t->meta[mid].key){
 			start=mid+1;
-			mid=(start+end)/2;
 		}
 	}
 }
@@ -422,6 +416,7 @@ bool skiplist_keyset_read_c(keyset *k,char *res, int fd, lsmtree_gc_req_t *req){
 	temp->isgc=true;
 	memio_read(mio,k->ppa,(uint64_t)(PAGESIZE),(uint8_t*)res,1,temp,temp->dmatag);
 #endif
+	return true;
 }
 bool skiplist_keyset_read(keyset* k,char *res,int fd,lsmtree_req_t *req){
 	if(k==NULL)
@@ -459,7 +454,7 @@ KEYT skiplist_meta_write(skiplist *data,int fd, lsmtree_gc_req_t *req,double fpr
 	snode *temp=data->header->list[1];
 	KEYT temp_pp;
 	temp_pp=getPPA(header_segment,(void*)req);
-	int test=0;
+	KEYT test=0;
 	for(int j=0;j<1; j++){
 		lsmtree_gc_req_t *temp_req=(lsmtree_gc_req_t*)malloc(sizeof(lsmtree_gc_req_t));
 		temp_req->isgc=true;
@@ -733,26 +728,42 @@ void skiplist_relocate_data(skiplist* input){
 }
 
 void skiplist_save(skiplist* input,int fd){
-	write(fd,&input->size, sizeof(input->size));
+	if(!write(fd,&input->size, sizeof(input->size))){
+			printf("not work\n");
+	}
 	snode *temp_iter=input->header->list[1];
 	char buf[PAGESIZE]={0,};
 	while(temp_iter!=input->header){
-		write(fd,&temp_iter->key,sizeof(temp_iter->key));
-		write(fd,buf,PAGESIZE);
-		write(fd,&temp_iter->vflag,sizeof(temp_iter->vflag));
+		if(!write(fd,&temp_iter->key,sizeof(temp_iter->key))){
+			printf("not work\n");
+		}
+		if(!write(fd,buf,PAGESIZE)){
+			printf("not work\n");
+		}
+		if(!write(fd,&temp_iter->vflag,sizeof(temp_iter->vflag))){
+			printf("not work\n");
+		}
 		temp_iter=temp_iter->list[1];
 	}
 }
 void skiplist_load(skiplist* input, int fd){
 	uint64_t size;
-	read(fd,&size,sizeof(size));
+	if(!read(fd,&size,sizeof(size))){
+			printf("not work\n");
+	}
 	KEYT key;
 	char *value=(char*)malloc(PAGESIZE);
 	bool vflag;
-	for(int i=0; i<size; i++){
-		read(fd,&key,sizeof(key));
-		read(fd,value,PAGESIZE);
-		read(fd,&vflag,sizeof(vflag));
+	for(uint64_t i=0; i<size; i++){
+		if(!read(fd,&key,sizeof(key))){
+			printf("not work\n");
+		}
+		if(!read(fd,value,PAGESIZE)){
+			printf("not work\n");
+		}
+		if(!read(fd,&vflag,sizeof(vflag))){
+			printf("not work\n");
+		}
 		skiplist_insert(input,key,value,NULL,vflag);
 	}
 }

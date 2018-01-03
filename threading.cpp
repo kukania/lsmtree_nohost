@@ -24,6 +24,7 @@ int mixed_req_cnt;
 
 extern MeasureTime mt;
 extern MeasureTime bp;
+extern MeasureTime mem;
 MeasureTime gt;
 MeasureTime *wt;
 MeasureTime *at;
@@ -47,6 +48,9 @@ void threading_init(threading *input){
 	input->cache_hit=0;
 	input->header_read=0;
 	input->notfound=0;
+	input->target_req=0;
+	input->write_num=0;
+	input->read_num=0;
 	measure_init(&input->waiting);
 
 	for(int i=0; i<WAITREQN; i++){
@@ -71,6 +75,12 @@ void threadset_init(threadset* input){
 	pthread_mutex_init(&input->gc_lock,NULL);
 	pthread_mutex_init(&input->read_lock,NULL);
 	pthread_mutex_init(&gc_read_lock,NULL);
+
+	input->fp=fopen("debug_log","w+");
+	if(input->fp==NULL){
+		printf("thread_debug open fail\n");
+	}
+	fprintf(input->fp,"%s %s %s %s %s %s %s\n","cache_hit","NOTFOUND","header","RAF","write","read","all");
 #ifdef M_QUEUE
 
 #else
@@ -87,7 +97,6 @@ void threadset_init(threadset* input){
 #ifdef DEBUG_THREAD
 	pthread_mutex_init(&input->debug_m,NULL);
 #endif
-
 	for(int i=0; i<THREADNUM;i ++){
 		threading_init(&input->threads[i]);
 		input->threads[i].master=input;
@@ -134,20 +143,19 @@ void threadset_clear(threadset *input){
 #ifdef DEBUG_THREAD
 	pthread_mutex_destroy(&input->debug_m);
 #endif
-	lsmtree_req_t *req_temp;
-	lsmtree_gc_req_t *gc_temp;
+	//lsmtree_req_t *req_temp;
+	//lsmtree_gc_req_t *gc_temp;
 	delete input->req_q;
 	delete input->gc_q;
 
 }
 bool read_flag;
 void* thread_gc_main(void *input){
-	int number=0;
 	threadset *master=(threadset*)input;
 	threading *myth=&master->gc_thread;
 	while(1){
 		lsmtree_gc_req_t *lsm_req;
-		void *req_data;
+		void *req_data=NULL;
 #ifdef M_QUEUE
 		while(!master->gc_q->size()){}
 		pthread_mutex_lock(&master->gc_lock);
@@ -183,8 +191,8 @@ void* thread_gc_main(void *input){
 			lsmtree *LSM=(lsmtree*)lsm_req->params[3];
 			level* src,*des;
 			skiplist* data;
-			char *res;
-			KEYT *key;
+			//char *res;
+			//KEYT *key;
 			Entry *result_entry;
 			bool flag=false;
 			//lsm_req->flag for oob
@@ -241,12 +249,11 @@ void* thread_gc_main(void *input){
 }
 bool check_flll=0;
 void* thread_main(void *input){
-	int cnt=0;
 	//
-	cpu_set_t cpuset;
+	//cpu_set_t cpuset;
 	//CPU_ZERO(&cpuset);
 	//CPU_SET(2, &cpuset);
-	pthread_t current_thread = pthread_self();
+	//pthread_t current_thread = pthread_self();
 	//	pthread_setaffinity_np(current_thread, sizeof(cpu_set_t), &cpuset);
 	//nice(-20);
 	//*/
@@ -259,8 +266,6 @@ void* thread_main(void *input){
 		}
 	}
 	threading *myth=&master->threads[number];
-	int nullvalue=0;
-	bool header_flag=false;
 	while(1){
 		lsmtree_req_t *lsm_req;
 		void *data=NULL;
@@ -314,7 +319,6 @@ void* thread_main(void *input){
 			char *value;		
 			lsmtree *LSM=(lsmtree*)lsm_req->params[3];
 			int test_num;
-
 			switch(lsm_req->type){
 				case DISK_READ_T:
 					value=(char*)lsm_req->params[2];
@@ -322,7 +326,7 @@ void* thread_main(void *input){
 					test_num=thread_level_get(LSM,*key,myth,value,lsm_req,lsm_req->flag);
 					pthread_mutex_unlock(&gc_read_lock);
 					if(test_num<=0){
-						printf("level find [%u]not_found\n",*key);
+					//	printf("level find [%u]not_found\n",*key);
 						myth->notfound++;
 #ifdef SERVER
 						lsm_req->req->type_info->type=-1;
@@ -333,13 +337,14 @@ void* thread_main(void *input){
 						lsm_req->end_req(lsm_req);
 					break;
 				case LR_READ_T:
+					myth->read_num++;
 					value=(char*)lsm_req->params[2];
 					pthread_mutex_init(&lsm_req->meta_lock,NULL);
 					pthread_mutex_lock(&gc_read_lock);
 					test_num=thread_get(LSM,*key,myth,value,lsm_req);
 					pthread_mutex_unlock(&gc_read_lock);
 					if(test_num==0){
-						printf("thread get [%u]not_found\n",*key);
+					//	printf("thread get [%u]not_found\n",*key);
 						myth->notfound++;
 #ifdef SERVER
 						lsm_req->req->type_info->type=-1;
@@ -348,12 +353,11 @@ void* thread_main(void *input){
 					}
 					if(test_num==2)
 						lsm_req->end_req(lsm_req);
-					if(test_num==4)
-						header_flag=true;
 					if(test_num==6)
 						lsm_req->end_req(lsm_req);
 					break;
 				case LR_WRITE_T:
+					myth->write_num++;
 					if(is_flush_needed(LSM)){
 						lr_gc_make_req(0);
 					}
@@ -371,6 +375,7 @@ void* thread_main(void *input){
 					break;
 			}
 			myth->flag=0;
+			myth->target_req++;
 		}
 	}
 	return NULL;
@@ -472,28 +477,54 @@ void threadset_mixed_wait(){
 
 
 
+
+void threadset_debug_init(threadset* input){
+	threading *temp;
+	for(int i=0; i<THREADNUM; i++){
+		temp=&input->threads[i];
+		temp->cache_hit=0;
+		temp->header_read=0;
+		temp->notfound=0;
+		temp->target_req=0;
+		temp->write_num=0;
+		temp->read_num=0;
+	}
+}
 void threadset_debug_print(threadset *input){
 	int all_cache_hit=0;
 	int all_header_read=0;
-	float all_waiting_time=0.0f;
-	threading temp;
+	int all_not_found=0;
+	int all_target_req=0;
+	int all_write_num=0;
+	int all_read_num=0;
+	threading* temp;
 	for(int i=0; i<THREADNUM; i++){
-		temp=input->threads[i];
-		printf("\n[threadnumber:%d]\n",i);
-		printf("header_read : %d\n",temp.header_read);
-		printf("------------------------\n");
+		temp=&input->threads[i];
+		//printf("\n[threadnumber:%d]\n",i);
+		//printf("header_read : %d\n",temp.header_read);
+		//printf("------------------------\n");
+		all_cache_hit+=temp->cache_hit;
+		all_header_read+=temp->header_read;
+		all_not_found+=temp->notfound;
+		all_target_req+=temp->target_req;
+		all_write_num+=temp->write_num;
+		all_read_num+=temp->read_num;
 
-		all_cache_hit+=temp.cache_hit;
-		all_header_read+=temp.header_read;
+
+		temp->cache_hit=0;
+		temp->header_read=0;
+		temp->notfound=0;
+		temp->target_req=0;
+		temp->write_num=0;
+		temp->read_num=0;
 	}
 
-	printf("\n\n======================\n");
-	printf("all summary\n");
+//	printf("\n\n======================\n");
+	fprintf(input->fp,"%.4f %.4f %d %.4f %d %d %d\n",(float)all_cache_hit/all_target_req,(float)all_not_found/all_target_req,all_header_read,(float)all_header_read/all_target_req,all_write_num,all_read_num,all_target_req);/*
 	printf("cache_hit : %.3f\n",(float)all_cache_hit/(INPUTSIZE-KEYN));
 	printf("NOTFOUND : %.3f\n",(float)input->threads[0].notfound/INPUTSIZE);
 	printf("header_read: %d [%d]\n",all_header_read,INPUTSIZE-KEYN);
-	printf("RAFl: %.3f\n",(float)all_header_read/(INPUTSIZE-KEYN));
-	printf("waiting time : %.6f\n",all_waiting_time);
-	printf("======================\n");
+	printf("RAFl: %.3f\n",(float)all_header_read/(INPUTSIZE-KEYN));*/
+//	printf("======================\n");
 
 }

@@ -70,7 +70,9 @@ void lsmtree_save(lsmtree *LSM, char *lo){
 			level_cnt++;
 		}
 	}
-	write(tfd,&level_cnt,sizeof(level_cnt));
+	if(!write(tfd,&level_cnt,sizeof(level_cnt))){
+		printf("not work\n");
+	}
 	for(int i=0; i<level_cnt; i++){
 		level *lev=LSM->buf.disk[i];
 		if(lev->size!=0){
@@ -86,7 +88,9 @@ void lsmtree_load(lsmtree *LSM, char *lo){
 		printf("file open error!\n");
 	}
 	int level_cnt;
-	read(tfd,&level_cnt,sizeof(level_cnt));
+	if(!read(tfd,&level_cnt,sizeof(level_cnt))){
+		printf("not work\n");
+	}
 	for(int i=0; i<level_cnt; i++){
 		level *lev=LSM->buf.disk[i];
 		level_load(lev,tfd);
@@ -284,7 +288,7 @@ int thread_level_get(lsmtree *LSM,KEYT key, threading *input, char *ret, lsmtree
 			temp_key=skiplist_keyset_find(temp->data,key);
 			if(temp_key!=NULL){
 				input->cache_hit++;
-				cache_update(CH,temp);
+				//cache_update(CH,temp);
 				if(temp_key->ppa==DELETEDKEY){
 					printf("[%u]deleted\n",temp_key->key);
 					pthread_mutex_unlock(&LSM->buf.disk[i]->level_lock);
@@ -359,7 +363,7 @@ int thread_get(lsmtree *LSM, KEYT key, threading *input, char *ret,lsmtree_req_t
 			temp_key=skiplist_keyset_find(temp->data,key);
 			if(temp_key!=NULL){
 				input->cache_hit++;
-				cache_update(CH,temp);
+				//cache_update(CH,temp);
 				if(temp_key->ppa==DELETEDKEY){
 					printf("[%u]deleted\n",temp_key->key);
 					pthread_mutex_unlock(&LSM->buf.disk[i]->level_lock);
@@ -435,10 +439,11 @@ lsmtree* lsm_reset(lsmtree* input){
 }
 level *target_des;
 int compaction__;
+int allnumber;
 bool compaction(lsmtree *LSM, level *src, level *des, Entry *ent, lsmtree_gc_req_t *req){
-	printf("%d\n",compaction__++);
 	KEYT s_start,s_end;
 	int src_cnt=0;
+	int noh=0;
 	Entry **src_list=NULL;
 	Entry **src_origin_list=NULL;
 	if(src==NULL){
@@ -538,6 +543,8 @@ bool compaction(lsmtree *LSM, level *src, level *des, Entry *ent, lsmtree_gc_req
 		target_des->fpr=des->fpr;
 
 		skiplist *last=NULL;
+		Entry *last_one=NULL;
+		Entry *temp_last_one=NULL;
 		//overlap
 		for(int i=0; src_list[i]!=NULL; i++){
 			Entry *target=src_list[i];
@@ -552,17 +559,34 @@ bool compaction(lsmtree *LSM, level *src, level *des, Entry *ent, lsmtree_gc_req
 				if(last==NULL){
 					last=(skiplist*)malloc(sizeof(skiplist));
 					last=skiplist_init(last);
-				}
+				}/*
+				else{
+					skiplist *temp_last=(skiplist*)malloc(sizeof(skiplist));
+					temp_last=skiplist_init(temp_last);
+					snode *temp=last->header->list[1];
+					snode *temp_s;
+					while(temp!=last->header){
+						temp_s=skiplist_insert(temp_last,temp->key,NULL,NULL,temp->vflag);
+						if(temp_s)
+							temp_s->ppa=temp->ppa;
+						temp=temp->list[1];
+					}
+					skiplist_free(last);
+					last=temp_last;
+				}*/
 
 				int desnumber=0;
 				req->now_number=0;
 				req->target_number=0;
 				for(int j=0; iter[j]!=NULL; j++) desnumber++; //des 
-	
 				req->compt_headers=(sktable*)malloc(sizeof(sktable)*(desnumber+1));
 				for(int j=0; iter[j]!=NULL; j++){
 					Entry *temp_e=iter[j];
 					temp_e->iscompactioning=true;
+					if(last_one!=NULL){
+						if(last_one==iter[j])
+							continue;
+					}
 				#ifdef CACHE
 					if(temp_e->data==NULL){
 						skiplist_meta_read_c(temp_e->pbn,LSM->dfd,j,req);
@@ -572,20 +596,25 @@ bool compaction(lsmtree *LSM, level *src, level *des, Entry *ent, lsmtree_gc_req
 					skiplist_meta_read_c(temp_e->pbn,LSM->dfd,j,req);
 					req->target_number++;
 				#endif
+					noh++;
 				}
 				if(src!=NULL){
 					skiplist_meta_read_c(src_origin_list[i]->pbn,LSM->dfd,desnumber,req);
 					req->target_number++;
+					noh++;
 				}
 				KEYT limit=iter[desnumber-1]->key;
-
+				temp_last_one=iter[desnumber-1];
 				lr_gc_req_wait(req);
-				
 				sktable *sk;
 				uint8_t *temp_bit;
 				snode *temp_s;
 				//des insert into skiplist
 				for(int j=0; j<desnumber; j++){
+					if(last_one!=NULL){
+						if(last_one==iter[j])
+							continue;
+					}
 #ifdef CACHE
 					if(iter[j]->data!=NULL){
 						sk=iter[j]->data;
@@ -607,8 +636,9 @@ bool compaction(lsmtree *LSM, level *src, level *des, Entry *ent, lsmtree_gc_req
 						else{
 							temp_s=skiplist_insert(last,sk->meta[k].key,NULL,NULL,false);
 						}
-						if(temp_s!=NULL)
+						if(temp_s!=NULL){
 							temp_s->ppa=sk->meta[k].ppa;
+						}
 					}
 					delete_ppa(header_segment,iter[j]->pbn);
 				}
@@ -630,8 +660,9 @@ bool compaction(lsmtree *LSM, level *src, level *des, Entry *ent, lsmtree_gc_req
 						else{
 							temp_s=skiplist_insert(last,sk->meta[k].key,NULL,NULL,false);
 						}
-						if(temp_s!=NULL)
+						if(temp_s!=NULL){
 							temp_s->ppa=sk->meta[k].ppa;
+						}
 					}
 #else
 					skiplist *temp_skip=(skiplist*)req->data;
@@ -639,8 +670,12 @@ bool compaction(lsmtree *LSM, level *src, level *des, Entry *ent, lsmtree_gc_req
 					snode *temp_s2;
 					while(temp_s1!=temp_skip->header){
 						temp_s2=skiplist_insert(last, temp_s1->key,NULL,NULL,temp_s1->vflag);
-						if(temp_s2)
+						if(temp_s2){
+							if(temp_s1->ppa==127){
+								printf("here in compaction\n");
+							}
 							temp_s2->ppa=temp_s1->ppa;
+						}
 						temp_s1=temp_s1->list[1];
 					}
 					skiplist_free(temp_skip);
@@ -649,7 +684,6 @@ bool compaction(lsmtree *LSM, level *src, level *des, Entry *ent, lsmtree_gc_req
 				else{
 					sk=&req->compt_headers[desnumber];
 					temp_bit=target->bitset;
-				
 					for(int k=0; k<KEYN; k++){
 						int bit_n=k/8;
 						int off=k%8;
@@ -663,10 +697,8 @@ bool compaction(lsmtree *LSM, level *src, level *des, Entry *ent, lsmtree_gc_req
 						if(temp_s!=NULL)
 							temp_s->ppa=sk->meta[k].ppa;
 					}
-					if(target->pbn==17324)
-						printf("here!\n");
 					delete_ppa(header_segment,src_origin_list[i]->pbn);
-				}	
+				}
 				skiplist *t;
 				if(src_list[i+1]==NULL){
 					while((t=skiplist_cut(last,KEYN> last->size? last->size:KEYN,UINT_MAX))){
@@ -704,6 +736,7 @@ bool compaction(lsmtree *LSM, level *src, level *des, Entry *ent, lsmtree_gc_req
 				free(req->compt_headers);
 				free_entry(target);
 			}
+			last_one=temp_last_one;
 			free(iter);
 		}
 		//not compacted node's are copied, and inserted into target_des
@@ -717,8 +750,8 @@ bool compaction(lsmtree *LSM, level *src, level *des, Entry *ent, lsmtree_gc_req
 		}
 		free(des_iter);
 	}
-	
-	level **temp_pp;
+	allnumber+=noh;
+	level **temp_pp=NULL;
 	level *temp_src;
 	if(src!=NULL){//src level swap
 		int m_size=src->m_size;

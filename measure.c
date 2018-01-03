@@ -57,7 +57,8 @@ void measure_stamp(MeasureTime *m){
 	struct timeval res; linktime *t;
 	gettimeofday(&m->header->end,NULL);
 	timersub(&m->header->end,&m->header->start,&res);
-	printf("%ld && %.6f\n",res.tv_sec,(float)res.tv_usec/1000000);
+	double result=(double)res.tv_sec+(((double)res.tv_usec)/1000000);
+	printf("%lf\n",result);
 	t=m->header;
 	m->header=m->header->next;
 	free(t);

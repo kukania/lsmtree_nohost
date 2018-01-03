@@ -28,6 +28,7 @@ pthread_mutex_t endR;
 
 extern MeasureTime bp;
 extern MeasureTime buf;
+extern MeasureTime mem;
 
 extern int gc_end_check;
 extern int read_end_check;
@@ -59,7 +60,7 @@ int8_t lr_inter_init(){
 			keys[i]=i+1;
 		}
 		else{
-			keys[i]=rand()%(INPUTSIZE)+1;
+			keys[i]=rand()%(KEYRANGE)+1;
 		}	
 	}
 	if(init_lsm(LSM)!=NULL)
@@ -128,7 +129,7 @@ int8_t lr_make_req(req_t *r){
 				th_req->type=LR_WRITE_T;
 				break;
 			case 2://get
-				threadset_gc_wait(&processor);
+		//		threadset_gc_wait(&processor);
 				th_req->type=LR_READ_T;
 				if(isread==false){
 					key_cnt__=0;
@@ -247,8 +248,6 @@ int8_t lr_end_req(lsmtree_req_t *r){
 			pthread_mutex_lock(&print_lock);
 			read_end_check++;
 			pthread_mutex_unlock(&print_lock);
-//			delete r->meta;
-			pthread_mutex_destroy(&print_lock);
 #if defined(ENABLE_LIBFTL) && defined(LIBLSM)
 			memio_free_dma(2,r->req->dmaTag);
 #elif SERVER
@@ -327,6 +326,7 @@ int8_t lr_gc_end_req(lsmtree_gc_req_t *r){
 			break;
 	}
 	free(r);
+	return 1;
 }
 
 int8_t lr_gc_req_wait(lsmtree_gc_req_t *input){
@@ -339,8 +339,6 @@ int8_t lr_gc_req_wait(lsmtree_gc_req_t *input){
 		pthread_mutex_unlock(&input->meta_lock);
 	}
 	return 0;
-}
-int8_t lr_wait(){
 }
 int8_t lr_req_wait(lsmtree_req_t *input){
 	while(1){

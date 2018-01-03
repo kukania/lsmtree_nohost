@@ -29,6 +29,10 @@ typedef struct threading{
 	int cache_hit;
 	int header_read;
 	int notfound;
+	int target_req;
+	int write_num;
+	int read_num;
+
 	MeasureTime waiting;
 	threadset *master;
 	
@@ -45,6 +49,7 @@ typedef struct threadset{
 	pthread_cond_t gc_cond;
 	pthread_cond_t gc_full_cond;
 	bool write_flag;
+	FILE *fp;
 #ifdef DEBUG_THREAD
 	pthread_mutex_t debug_m;
 	int errcnt;
@@ -87,5 +92,6 @@ void threadset_read_wait(threadset*);
 void threadset_gc_assign(threadset*,lsmtree_gc_req_t *);
 void threadset_gc_wait(threadset*);
 void threadset_debug_print(threadset*);
+void threadset_debug_init(threadset*);
 void threadset_mixed_wait();
 #endif

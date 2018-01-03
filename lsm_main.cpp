@@ -46,6 +46,7 @@ extern int write_wait_check;
 extern int write_make_check;
 extern int read_end_check;
 extern int mixed_req_cnt;
+extern int allnumber;
 
 extern lsmtree *LSM;
 extern delete_set *header_segment;
@@ -59,10 +60,6 @@ bool utils_flag;
 #include"cache.h"
 extern cache *CH;
 #endif
-void *util_check(void *){
-	while(utils_flag){
-	}
-}
 
 int main(){
 	wt=at=NULL;
@@ -73,14 +70,17 @@ int main(){
 	int fd;
 	printf("start!\n");
 	MS(&mt);
-	
 	int cnt=1;
 	for(int i=1; i<=INPUTSIZE; i++){
 		//printf("%d\n",i);
 		req=(req_t*)malloc(sizeof(req_t));
 		req->type=1;
+		if(i%1000000==0){
+			MT(&mt);
+			MS(&mt);
+		}
 		if(i%1024==1){
-	//		printf("%d\n",i);
+		//	printf("%d\n",i);
 		}
 		if(SEQUENCE==0){
 			key=keys[i-1];
@@ -99,11 +99,13 @@ int main(){
 		lr_make_req(req);
 	}
 	//printf("throw all write req!\n");
+	/*
 	threadset_request_wait(&processor);
 	threadset_gc_wait(&processor);
-	threadset_request_wait(&processor);
-	//lr_wait();
+	threadset_request_wait(&processor);*/
+	//while(mio->tagQ->size()!=128){}
 	MT(&mt);
+	//lr_wait();
 	//measure_end(&mt,"write_wait");
 	printf("write end!!\n");
 	/*
@@ -125,8 +127,9 @@ int main(){
 		level_print(LSM->buf.disk[i]);
 	}*/
 	//sleep(10);
+/*
 	char location[]="data/meta.data";
-	lsmtree_save(LSM,location);
+	lsmtree_save(LSM,location);*/
 	
 	processor.threads[0].flag=0;
 	printf("read!\n");
@@ -136,21 +139,28 @@ int main(){
 	write_make_check=0;
 	read_end_check=0;
 	//pthread_create(&thr,NULL,util_check,NULL);
+	threadset_debug_init(&processor);
 	MS(&mt);
 	//printf("??");
 	int divide=INPUTSIZE/3;
-	for(int i=1; i<=INPUTSIZE; i++){
+	for(int i=1; i<=INPUTSIZE*2; i++){
 		req=(req_t*)malloc(sizeof(req_t));
-		mixed_req_cnt++;
+		mixed_req_cnt++;/*
 		if(rand()%10==0)
 			req->type=1;
-		else
+		else*/
 			req->type=2;
+		if(i%1000000==0){
+			MT(&mt);
+			threadset_debug_print(&processor);
+			MS(&mt);
+		}
 		if(i%1024==1){
-			printf("%d\n",i);
+	//		printf("%d\n",i);
 		}
 		if(SEQUENCE==0){
-			key=keys[i-1];
+			//key=keys[i-1];
+			key=rand()%(KEYRANGE)+1;
 		}
 		else{
 			key=i;
@@ -168,14 +178,17 @@ int main(){
 	//printf("throw all read req!\n");
 	//threadset_read_wait(&processor);
 	//threadset_mixed_wait();
-	MT(&mt);
+	//while(mio->tagQ->size()!=128){}
+	MT(&mt);/*
 	printf("meta_read_data:%d\n",meta_read_data);
 	//measure_end(&mt,"read_end");
-	printf("mem:%.6f\n",(float)mem.adding.tv_usec/1000000);
+	printf("mem:%ld && %.6f\n",mem.adding.tv_sec,(float)mem.adding.tv_usec/1000000);
 //	printf("last:%.6f\n",(float)last.adding.tv_usec/1000000);
-	printf("buf:%.6f\n",(float)buf.adding.tv_usec/1000000);
-	printf("bp:%.6f\n",(float)bp.adding.tv_usec/1000000);
-	printf("find:%.6f\n",(float)find.adding.tv_usec/1000000);
+	printf("buf:%ld && %.6f\n",buf.adding.tv_sec,(float)buf.adding.tv_usec/1000000);
+	printf("bp:%ld && %.6f\n",bp.adding.tv_sec,(float)bp.adding.tv_usec/1000000);
+	printf("find:%ld && %.6f\n",find.adding.tv_sec,(float)find.adding.tv_usec/1000000);
+	printf("\nallnumber: %d\n",allnumber);
+*/
 	threadset_debug_print(&processor);
 	//printf("assign write:%.6f\n",(float)mas2.adding.tv_usec/1000000);
 //	printf("assign read:%.6f\n",(float)mas.adding.tv_usec/1000000);

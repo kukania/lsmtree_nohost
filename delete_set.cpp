@@ -33,16 +33,17 @@ lsmtree_req_t * delete_make_req(bool iswrite){
 void delete_init(){//for test
 	oob=(uint64_t *)malloc((MAXPAGE)*sizeof(uint64_t));
 	memset(oob,0,(MAXPAGE)*sizeof(uint64_t));
+	printf("oob size : %d\n",MAXPAGE);
 	data_segment=(delete_set*)malloc(sizeof(delete_set));
 	header_segment=(delete_set *)malloc(sizeof(delete_set));
 
-	segment_init(header_segment,0,1,false);
-	segment_init(data_segment,2,SEGNUM-3,true);
+	segment_init(header_segment,0,5,false);
+	segment_init(data_segment,6,SEGNUM-2-5,true);
 	/*
 	   segment_init(data_segment,0,SEGNUM-5,true); // 0~SEGNUM-6, reserve SEGNUM-5
 	   segment_init(header_segment,SEGNUM-4,1,false);*/
-	printf("[lsm]number of header ppa %d\n",header_segment->ppa->size());
-	printf("[lsm]number of data ppa %d\n",data_segment->ppa->size());
+	printf("[lsm]size of header ppa %d\n",(header_segment->ppa->size())*8/1024);
+	printf("[lsm]size of data ppa %d\n",(data_segment->ppa->size())*8/1024);
 }
 void delete_ppa(delete_set *set,KEYT input){
 #ifdef NOGC_TEST
@@ -99,9 +100,6 @@ void delete_ppa(delete_set *set,KEYT input){
 int delete_get_victim(delete_set *set){
 	int invalids=0;
 	int block_num=0;
-	for(int i=0; i<set->size; i++){
-		printf("--[block info] invalid_size=%d number=%d\n",set->blocks[i].invalid_n,set->blocks[i].number);
-	}
 
 	for(int i=0; i<set->size; i++){
 		if(invalids<set->blocks[i].invalid_n){
@@ -111,7 +109,6 @@ int delete_get_victim(delete_set *set){
 	}
 	if(invalids==0)
 		return -1;
-	printf("[return info] %d\n",block_num);
 	return block_num;
 }
 extern level *target_des;
@@ -426,5 +423,6 @@ int delete_trim_process_data(delete_set *set){
 		segment_block_init(set,block_num);
 		segment_block_change(set,block_num);
 	}
+	return 1;
 }
 

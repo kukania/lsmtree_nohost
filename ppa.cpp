@@ -54,11 +54,11 @@ KEYT getPPA(segment *input, void *req){
 	while(!input->ppa->size()){
 	//while(!input->ppa->size){
 		if(input->isdata){
-			printf("delete data call!!!!\n");
+			//printf("delete data call!!!!\n");
 			delete_trim_process_data(input);
 		}
 		else{
-			printf("delete header call!!!!\n");
+			//printf("delete header call!!!!\n");
 			delete_trim_process_header(input);
 		}
 	}
@@ -66,15 +66,11 @@ KEYT getPPA(segment *input, void *req){
 	input->ppa->pop();
 	//KEYT res=queue_pop(input->ppa);
 	pthread_mutex_unlock(&input->ppa_lock);
-	if(res==17317)
-		printf("here!\n");
 	return res;
 }
 KEYT getRPPA(segment *input, void *req){
 	KEYT res=input->reserve_block * PAGENUM;
 	res+=input->reserve_block_point++;
-	if(res==17317)
-		printf("here!\n");
 	return res;
 }
 void freePPA(segment *input, KEYT in){

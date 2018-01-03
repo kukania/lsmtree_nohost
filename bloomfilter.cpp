@@ -151,17 +151,29 @@ bool bf_check(BF* input, KEYT key){
 	}
 	return true;
 }void bf_save(BF* input,int fd){
-	write(fd,&input->n,sizeof(input->n));
-	write(fd,&input->p,sizeof(input->p));
-	write(fd,input->body,input->targetsize);
+	if(!write(fd,&input->n,sizeof(input->n))){
+		printf("not work\n");
+	}
+	if(!write(fd,&input->p,sizeof(input->p))){
+		printf("not work\n");
+	}
+	if(!write(fd,input->body,input->targetsize)){
+		printf("not work\n");
+	}
 }
 BF *bf_load(int fd){
 	int n;
 	double p;
-	read(fd,&n,sizeof(n));
-	read(fd,&p,sizeof(p));
+	if(!read(fd,&n,sizeof(n))){
+		printf("not work\n");
+	}
+	if(!read(fd,&p,sizeof(p))){
+		printf("not work\n");
+	}
 	BF *result=bf_init(n,p);
-	read(fd,result->body,result->targetsize);
+	if(!read(fd,result->body,result->targetsize)){
+		printf("not work\n");
+	}
 	return result;
 }
 

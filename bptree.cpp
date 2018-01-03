@@ -190,9 +190,7 @@ Entry *level_get_victim(level *lev){
 	Entry *temp=startN->children[0].entry;
 	Entry *res=temp;
 	if(temp==NULL) return NULL;
-	int idx=0;
 	int cnt=1;
-	bool startingFlag=false;
 	while(1){
 		if(res->version>temp->version)
 			res=temp;
@@ -356,7 +354,7 @@ Node *level_delete_restructuring(level *lev, Node *target){
 	while(1){
 		if(target->count> MAXC/2 || target->parent==NULL) return target;
 		int idx=0;
-		Node *next,*parent=target->parent;
+		Node *next=NULL,*parent=target->parent;
 		for(int i=0; i<parent->count; i++){
 			if(parent->children[i].node==target){
 				if(i==0){ next=parent->children[i+1].node; idx=i+1;}
@@ -593,13 +591,25 @@ void level_save(level *lev,int fd){
 	if(startN==NULL)
 		startN=lev->root;
 	int cnt=1;
-	write(fd,&lev->size,sizeof(lev->size));
+	if(write(fd,&lev->size,sizeof(lev->size))){
+			printf("not writed\n");
+	}
 	while(1){
-		write(fd,&iter->key,sizeof(int));
-		write(fd,&iter->version,sizeof(int));
-		write(fd,&iter->end,sizeof(int));
-		write(fd,&iter->pbn,sizeof(int));
-		write(fd,iter->bitset,KEYN/8);
+		if(!write(fd,&iter->key,sizeof(int))){
+			printf("not writed\n");
+		}
+		if(!write(fd,&iter->version,sizeof(int))){
+			printf("not writed\n");
+		}
+		if(!write(fd,&iter->end,sizeof(int))){
+			printf("not writed\n");
+		}
+		if(!write(fd,&iter->pbn,sizeof(int))){
+			printf("not writed\n");
+		}
+		if(!write(fd,iter->bitset,KEYN/8)){
+			printf("not writed\n");
+		}
 #ifdef BLOOM
 		bf_save(iter->filter,fd);
 #endif
@@ -638,12 +648,22 @@ void level_load(level *lev, int fd){
 	}
 	for(int i=0; i<size; i++){
 		Entry *temp=make_entry(0,0,0);
-		read(fd,&temp->key,sizeof(temp->key));
-		read(fd,&temp->version,sizeof(temp->key));
-		read(fd,&temp->end,sizeof(temp->key));
-		read(fd,&temp->pbn,sizeof(temp->key));
+		if(!read(fd,&temp->key,sizeof(temp->key))){
+			printf("not working\n");
+		}		
+		if(!read(fd,&temp->version,sizeof(temp->key))){
+			printf("not working\n");
+		}
+		if(!read(fd,&temp->end,sizeof(temp->key))){
+			printf("not working\n");
+		}
+		if(!read(fd,&temp->pbn,sizeof(temp->key))){
+			printf("not working\n");
+		}
 		temp->bitset=(uint8_t*)malloc(KEYN/8);
-		read(fd,temp->bitset,KEYN/8);
+		if(!read(fd,temp->bitset,KEYN/8)){
+			printf("not working\n");
+		}
 #ifdef BLOOM
 		temp->filter=bf_load(fd);
 #endif      

@@ -4,9 +4,9 @@ BDBM = ../bdbm_drv
 REDIS=../redis_nohost_final
 ROCKSDB=../rocksdb-server/src
 CFLAGS  +=\
-		  -g\
 		  -std=c++11\
 		  -DCPP\
+		  -O3\
 		  -Wwrite-strings\
 		  -DNOHOST\
 		  -DUSER_MODE\
@@ -16,12 +16,14 @@ CFLAGS  +=\
 		  -DUSE_PMU \
 		  -DUSE_NEW_RMW \
 		  -DLIBLSM\
+		  -DENABLE_LIBFTL\
+		  -Wall\
+	#	  -DDO_PREFETCH\
 	#	  -DSERVER\
-	#	  -DM_CPY\
 	#	  -DM_QUEUE\
+	#	  -DM_CPY\
 	#	  -DM_COMPT\
 	#	  -DNOGC_TEST\
-		  -DENABLE_LIBFTL\
 
 
 INCLUDES :=     -I$(PWD) \
@@ -73,7 +75,7 @@ test: liblsm.a test.c
 	$(CC) $(INCLUDES) $(CFLAGS) -o $@ test.c liblsm.a $(LIBS)
 
 LIBLSM : liblsm.a lsm_main.cpp libmemio.a
-	$(CC) $(INCLUDES) $(CFLAGS) -o $@ lsm_main.cpp liblsm.a $(LIBS) #libmemio.a
+	$(CC) $(INCLUDES) $(CFLAGS) -o $@ lsm_main.cpp liblsm.a $(LIBS) libmemio.a
 
 TESTLSM : liblsm.a lsm_read.cpp libmemio.a
 	$(CC) $(INCLUDES) $(CFLAGS) -o $@ lsm_read.cpp liblsm.a libmemio.a $(LIBS)
